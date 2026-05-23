@@ -1,0 +1,55 @@
+#pragma once
+
+// -----------------------------
+// Units
+// -----------------------------
+#define UNITS_METRIC     0
+#define UNITS_IMPERIAL   1
+
+#define OSD_UNITS        UNITS_IMPERIAL
+
+// -----------------------------
+// Hardware Pins
+// -----------------------------
+#define PIN_GPS_TX      0   // UART0 TX
+#define PIN_GPS_RX      1   // UART0 RX
+
+#define PIN_LCD_CS      17
+#define PIN_LCD_DC      16
+#define PIN_LCD_RST     20
+#define PIN_LCD_SCK     18
+#define PIN_LCD_MOSI    19
+#define TOUCH_CS        -1   // <— disables warning
+
+// -----------------------------
+// GPS Settings
+// -----------------------------
+#define GPS_DEFAULT_BAUD   9600
+
+// -----------------------------
+// Display Settings
+// -----------------------------
+#define SCREEN_WIDTH       240
+#define SCREEN_HEIGHT      240
+#define SCREEN_CENTER_X    120
+#define SCREEN_CENTER_Y    120
+#define SCREEN_RADIUS      120
+
+// Colors (TFT_eSPI style)
+#define COLOR_BACKGROUND   TFT_BLACK
+#define COLOR_AIRCRAFT     TFT_WHITE
+#define COLOR_HOME_CIRCLE  TFT_WHITE
+#define COLOR_HOME_TEXT    TFT_BLACK
+#define COLOR_TEXT         TFT_WHITE
+
+// -----------------------------
+// Radar Behavior
+// -----------------------------
+#define RADAR_CLAMP_DISTANCE_M   1000   // meters, user adjustable
+#define HOME_MARKER_RADIUS       8      // pixels
+
+// -----------------------------
+// Boot / UI Timing
+// -----------------------------
+#define BOOT_BAUD_DISPLAY_MS   3000
+#define RADAR_DRAW_FPS         20      // target FPS
