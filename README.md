@@ -1,10 +1,20 @@
+```
+  GGGG     PPPP     SSSS        H   H     oooo     m   m     eeee     rrrr
+ G         P   P   S            H   H    o    o    mm mm     e        r   r
+ G  GG     PPPP     SSS         HHHHH    o    o    m m m     eeee     rrrr
+ G   G     P            S       H   H    o    o    m   m     e        r  r
+  GGGG     P        SSSS        H   H     oooo     m   m     eeee     r   r
+
+      G   P   S       H   o   m   e   r
+```
+
 # GPSHomer — RP2040 GPS Home Radar Display
 
-## 🛰️ Overview
+## Overview
 GPSHomer is a GPS‑based “Home Direction Radar” built around:
 
-- Waveshare RP2040 Zero
-- 1.28" Round GC9A01 TFT Display (240×240, SPI)
+- Waveshare RP2040 Zero  
+- 1.28" Round GC9A01 TFT Display (240×240, SPI)  
 - NMEA GPS module (UART)
 
 The display shows:
@@ -14,36 +24,35 @@ The display shows:
 - Ground speed
 - Satellite count
 - Heading‑up radar rotation
-- Distance clamping (configurable)
+- Distance clamping
 
-On boot, the system autodetects the GPS baud rate and briefly displays it.
+On boot, the system autodetects the GPS baud rate and displays it briefly.
 
 ---
 
-## 🧩 Hardware
+## Hardware
 
-### 1. Waveshare RP2040 Zero
-- Dual‑core RP2040
-- 3.3V logic
-- SPI + UART support
-- Compact form factor
+### Waveshare RP2040 Zero
+- Dual‑core RP2040  
+- 3.3V logic  
+- SPI + UART support  
 
-### 2. 1.28" Round GC9A01 TFT Display
-- 240×240 resolution
-- 4‑wire SPI
-- GC9A01 driver
-- Pins: VCC, GND, SCL, SDA, DC, CS, RST
+### 1.28" Round GC9A01 TFT Display
+- 240×240 resolution  
+- 4‑wire SPI  
+- GC9A01 driver  
+- Pins: VCC, GND, SCL, SDA, DC, CS, RST  
 - No BL pin (backlight always on)
 
-### 3. GPS Module
-- Any NMEA‑compatible GPS module
-- Baud: 9600 / 38400 / 57600 / 115200
-- Outputs GGA + RMC
-- Provides lat/lon, speed, course, fix type, satellite count
+### GPS Module
+- Any NMEA‑compatible GPS module  
+- Baud: 9600 / 38400 / 57600 / 115200  
+- Outputs GGA + RMC  
+- Provides lat/lon, speed, course, fix type, satellite count  
 
 ---
 
-## 🔌 Wiring
+## Wiring
 
 ### RP2040 Zero → GC9A01 Display
 
@@ -57,7 +66,7 @@ On boot, the system autodetects the GPS baud rate and briefly displays it.
 | CS          | GP17       | Chip Select   |
 | RST         | GP20       | Reset         |
 
-> No BL pin — backlight is internally tied to VCC.
+Note: This display has no BL pin.
 
 ### RP2040 Zero → GPS Module
 
@@ -70,5 +79,106 @@ On boot, the system autodetects the GPS baud rate and briefly displays it.
 
 ---
 
-## ⚙️ TFT_eSPI Configuration (in config.h)
+## TFT_eSPI Configuration (config.h)
 
+```cpp
+#define USER_SETUP_LOADED
+#define GC9A01_DRIVER
+
+#define TFT_MOSI 19
+#define TFT_SCLK 18
+#define TFT_CS   17
+#define TFT_DC   16
+#define TFT_RST  20
+
+#define TFT_BL   -1
+#define TOUCH_CS -1
+
+#define SPI_FREQUENCY       60000000
+#define SPI_READ_FREQUENCY  20000000
+#define SPI_TOUCH_FREQUENCY 2500000
+```
+
+---
+
+## Software Architecture
+
+### Core 0
+- Display rendering  
+- Radar drawing  
+- UI elements  
+
+### Core 1
+- GPS UART reading  
+- NMEA parsing  
+- Updating shared navigation state  
+
+### GPS Module
+- Autodetects baud rate  
+- Parses GGA + RMC  
+- Tracks: lat/lon, speed, course, fix type, satellite count  
+
+### Display Module
+- Clears and redraws radar  
+- Draws aircraft symbol  
+- Draws home marker  
+- Shows speed + satellite count  
+- Heading‑up rotation  
+- Distance clamping  
+
+---
+
+## Radar Logic
+
+- Convert lat/lon to meters  
+- Compute vector from aircraft to home  
+- Rotate world by negative heading  
+- Clamp distance to radar radius  
+- Draw home marker last  
+
+---
+
+## Configuration (config.h)
+
+```cpp
+#define RADAR_CLAMP_DISTANCE_M   1000
+#define HOME_MARKER_RADIUS       8
+
+#define UNITS_METRIC     0
+#define UNITS_IMPERIAL   1
+#define OSD_UNITS        UNITS_METRIC
+
+#define BOOT_BAUD_DISPLAY_MS   2500
+#define RADAR_DRAW_FPS         20
+```
+
+---
+
+## Project Structure
+
+```
+/
+├── src
+│   ├── main.ino
+│   ├── Display.h
+│   ├── Display.cpp
+│   ├── GPS.h
+│   ├── GPS.cpp
+│   └── config.h
+└── README.md
+```
+
+---
+
+## Behavior Notes
+
+- Home position is captured on first valid fix  
+- GPS baud autodetected at startup  
+- Satellite count and ground speed shown on OSD  
+- Home marker always drawn on top  
+
+---
+
+## License
+
+MIT License (or your preferred license)
