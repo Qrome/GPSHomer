@@ -26,7 +26,10 @@ void GPS::begin(HardwareSerial &port) {
 
 bool GPS::autodetectBaud(const uint32_t *baudList, size_t baudCount,
                          uint32_t perBaudTimeoutMs) {
-    if (!_port) return false;
+    if (!_port) {
+        Serial.println("[GPS] no Serial1 Port!");
+        return false;
+    }
 
     for (size_t i = 0; i < baudCount; i++) {
         uint32_t baud = baudList[i];

@@ -2,6 +2,7 @@
 #include "config.h"
 #include "GPS.h"
 #include "Display.h"
+#include "LED.h"
 
 // Shared state between cores
 volatile bool  g_homeSet      = false;
@@ -16,36 +17,57 @@ volatile uint8_t g_sats       = 0;
 
 GPS gps;
 Display display;
+StatusLED led;
 
 uint32_t g_detectedBaud = 0;
+bool g_baudReported = false;
+uint32_t g_lastGpsDataMs = 0;
+bool rcHighDetected = false;
+
+unsigned long readRcPwm() {
+    // Reads HIGH pulse width in microseconds
+    return pulseIn(RC_PWM_PIN, HIGH, 25000);  // 25ms timeout
+}
+
+void checkRcResetTrigger() {
+    unsigned long pwm = readRcPwm();
+    if (pwm == 0) return;  // no signal or timeout
+
+    // Rising edge: above threshold
+    if (!rcHighDetected && pwm > RC_THRESHOLD) {
+        rcHighDetected = true;
+    }
+
+    // Falling edge: below threshold AFTER being high
+    if (rcHighDetected && pwm < RC_THRESHOLD) {
+        rcHighDetected = false;
+        resetHomePosition();   // <-- your function
+    }
+}
+
+void resetHomePosition() {
+    if (gps.hasFix()) {
+        g_homeLatDeg = gps.getLatitude();
+        g_homeLonDeg = gps.getLongitude();
+    }
+}
 
 void setup() {
     Serial.begin(115200);
     delay(500);
 
-    Serial1.setRX(PIN_GPS_RX);
-    Serial1.setTX(PIN_GPS_TX);
+    led.begin();
+    led.blue();   // Boot color
 
-    gps.begin(Serial1);
+    pinMode(RC_PWM_PIN, INPUT);
+
     display.begin();
 
-    const uint32_t baudList[] = {9600, 38400, 57600, 115200};
-    g_detectedBaud = 0;
-
-    for (size_t i = 0; i < sizeof(baudList) / sizeof(baudList[0]); i++) {
-        if (gps.autodetectBaud(&baudList[i], 1)) {
-            g_detectedBaud = baudList[i];
-            break;
-        }
-    }
-
-    if (g_detectedBaud == 0) {
-        g_detectedBaud = GPS_DEFAULT_BAUD;
-    }
-
+    // Show boot baud (will be updated once setup1 detects real baud)
     display.showBootBaud(g_detectedBaud);
     delay(BOOT_BAUD_DISPLAY_MS);
 }
+
 
 void loop() {
     static uint32_t lastFrameMs = 0;
@@ -70,16 +92,70 @@ void loop() {
         sats    = g_sats;
         interrupts();
 
+        checkRcResetTrigger();
         display.render(homeSet, homeLat, homeLon, curLat, curLon, heading, speed, sats);
     }
 }
 
+// Core 1 setup
+void setup1() {
+    // Wait for USB Serial to be ready
+    while (!Serial) {
+        tight_loop_contents();  // keeps Core 1 responsive
+    }
+
+    // Assign GPS UART pins
+    Serial1.setRX(PIN_GPS_RX);
+    Serial1.setTX(PIN_GPS_TX);
+
+    // Start GPS UART
+    gps.begin(Serial1);
+
+    delay(1500); // wait for GPS to sink up
+
+    // Baud autodetection
+    g_detectedBaud = 0;
+
+    for (size_t i = 0; i < sizeof(baudList) / sizeof(baudList[0]); i++) {
+        if (gps.autodetectBaud(&baudList[i], 1, 1000)) {
+            g_detectedBaud = baudList[i];
+            break;
+        }
+        delay(500);
+    }
+
+    if (g_detectedBaud == 0) {
+        g_detectedBaud = GPS_DEFAULT_BAUD;
+    }
+
+    g_lastGpsDataMs = millis();   // initialize GPS heartbeat
+}
+
+
 // Core 1 on RP2040 (Arduino core supports loop1)
 void loop1() {
+    static uint32_t lastUpdate = 0;
+    static uint32_t lastSerial = 0;
+
+    const uint32_t UPDATE_INTERVAL_MS = 5;
+    const uint32_t SERIAL_INTERVAL_MS = 2000;
+
     while (true) {
+        uint32_t now = millis();
+
+        // Run GPS update every 5ms
+        if (now - lastUpdate < UPDATE_INTERVAL_MS) {
+            tight_loop_contents();
+            continue;
+        }
+        lastUpdate = now;
+
         gps.update();
 
+        // Track GPS communication health
         if (gps.isHealthy()) {
+            g_lastGpsDataMs = now;  // GPS is talking to us
+
             int32_t lat1e7 = gps.getLatitude();
             int32_t lon1e7 = gps.getLongitude();
 
@@ -90,7 +166,8 @@ void loop1() {
             float headingDeg = gps.getCourse() * 0.1f;    // deg*10 → deg
             uint8_t sats = gps.getSatCount();
 
-            if (gps.hasFix() && !g_homeSet) {
+            if (sats > 6 && !g_homeSet) {
+                led.green();
                 g_homeLatDeg = latDeg;
                 g_homeLonDeg = lonDeg;
                 g_homeSet = true;
@@ -103,6 +180,32 @@ void loop1() {
             g_sats       = sats;
         }
 
-        delay(5);
+        // GPS communication timeout → LED amber
+        if (now - g_lastGpsDataMs > 2000) {
+            led.amber();
+        }
+
+        // Serial monitoring every 1 second
+        if (now - lastSerial >= SERIAL_INTERVAL_MS) {
+            lastSerial = now;
+
+            Serial.print("Sats: ");
+            Serial.print(g_sats);
+            Serial.print(" | Fix: ");
+            Serial.print(gps.hasFix() ? "YES" : "NO");
+            Serial.print(" | HomeSet: ");
+            Serial.print(g_homeSet ? "YES" : "NO");
+            Serial.print(" | Baud: ");
+            Serial.print(g_detectedBaud);
+            Serial.print(" | Speed: ");
+            Serial.print(g_speedMs);
+            Serial.print(" | Lat: ");
+            Serial.print(g_curLatDeg, 7);
+            Serial.print(" | Lon: ");
+            Serial.println(g_curLonDeg, 7);
+        }
     }
 }
+
+
+

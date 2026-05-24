@@ -55,7 +55,7 @@ void Display::drawSpeedAndSats(float speedMs, uint8_t sats) {
 
     _tft.setCursor(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 24);
     _tft.print((int)sats);
-    _tft.print(" sats");
+    _tft.print("^");
 }
 
 void Display::drawHomeMarker(
