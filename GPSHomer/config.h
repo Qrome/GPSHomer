@@ -30,7 +30,7 @@
 // GPS Settings
 // -----------------------------
 #define GPS_DEFAULT_BAUD   9600
-const uint32_t baudList[] = {38400, 57600, 115200, 9600};
+const uint32_t baudList[] = {9600, 38400, 57600, 115200, 9600};
 
 // -----------------------------
 // Display Settings
@@ -43,16 +43,19 @@ const uint32_t baudList[] = {38400, 57600, 115200, 9600};
 
 // Colors (TFT_eSPI style)
 #define COLOR_BACKGROUND   TFT_BLACK
-#define COLOR_AIRCRAFT     TFT_WHITE
+#define COLOR_AIRCRAFT     TFT_SKYBLUE
 #define COLOR_HOME_CIRCLE  TFT_WHITE
 #define COLOR_HOME_TEXT    TFT_BLACK
 #define COLOR_TEXT         TFT_WHITE
+#define COLOR_RING         0x03E0  // very dark lime green (RGB565) Darker: 0x02C0
+
 
 // -----------------------------
 // Radar Behavior
 // -----------------------------
-#define RADAR_CLAMP_DISTANCE_M   1000   // meters, user adjustable
 #define HOME_MARKER_RADIUS       8      // pixels
+#define OSD_SHOW_RINGS           1      // 1 = show rings, 0 = hide rings
+
 
 // -----------------------------
 // Boot / UI Timing

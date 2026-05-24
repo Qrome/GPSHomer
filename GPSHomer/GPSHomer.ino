@@ -166,7 +166,7 @@ void loop1() {
             float headingDeg = gps.getCourse() * 0.1f;    // deg*10 → deg
             uint8_t sats = gps.getSatCount();
 
-            if (sats > 6 && !g_homeSet) {
+            if (sats >= 6 && !g_homeSet) {
                 led.green();
                 g_homeLatDeg = latDeg;
                 g_homeLonDeg = lonDeg;

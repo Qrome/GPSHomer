@@ -29,9 +29,11 @@ private:
     TFT_eSPI _tft;
 
     void drawBackground();
+    void drawDistanceRings(float clampDist);
+    float computeDynamicClamp(float distM);
     void drawAircraft();
     void drawSpeedAndSats(float speedMs, uint8_t sats);
-    void drawHomeMarker(
+    float drawHomeMarker(
         bool homeSet,
         float homeLatDeg,
         float homeLonDeg,

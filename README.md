@@ -1,4 +1,3 @@
-```
   GGGG     PPPP     SSSS        H   H     oooo     m   m     eeee     rrrr
  G         P   P   S            H   H    o    o    mm mm     e        r   r
  G  GG     PPPP     SSS         HHHHH    o    o    m m m     eeee     rrrr
@@ -21,10 +20,13 @@ The display shows:
 
 - Aircraft symbol (centered)
 - Home direction marker (white circle with black “H”)
+- **Distance from home printed next to the H marker**
 - Ground speed
 - Satellite count
 - Heading‑up radar rotation
-- Distance clamping
+- **Smooth dynamic zoom based on distance**
+- **Optional distance rings (configurable)**
+- Distance clamping (auto‑scaled)
 
 On boot, the system autodetects the GPS baud rate and displays it briefly.
 
@@ -66,8 +68,6 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 | CS          | GP4        | Chip Select   |
 | RST         | GP6        | Reset         |
 
-Note: This display has no BL pin.
-
 ### RP2040 Zero → GPS Module
 
 | GPS Pin | RP2040 Pin | Description              |
@@ -90,7 +90,7 @@ Note: This display has no BL pin.
 #define PIN_LCD_RST     6
 #define PIN_LCD_SCK     2
 #define PIN_LCD_MOSI    3
-#define TOUCH_CS        -1   // <— disables warning
+#define TOUCH_CS        -1
 
 #define TFT_BL   -1
 #define TOUCH_CS -1
@@ -123,9 +123,11 @@ Note: This display has no BL pin.
 - Clears and redraws radar  
 - Draws aircraft symbol  
 - Draws home marker  
+- **Draws distance next to home marker**
 - Shows speed + satellite count  
 - Heading‑up rotation  
-- Distance clamping  
+- **Smooth dynamic zoom**
+- **Optional distance rings**
 
 ---
 
@@ -134,8 +136,40 @@ Note: This display has no BL pin.
 - Convert lat/lon to meters  
 - Compute vector from aircraft to home  
 - Rotate world by negative heading  
+- Compute distance  
+- **Apply smooth dynamic zoom (logarithmic scaling)**  
 - Clamp distance to radar radius  
+- **Draw distance rings (optional)**  
 - Draw home marker last  
+- **Print distance next to the H marker (above or below depending on position)**  
+
+---
+
+## New Features
+
+### ✔ Smooth Dynamic Zoom  
+The radar automatically zooms in/out based on distance using a logarithmic interpolation curve.  
+This prevents snapping and keeps the home marker meaningful at all ranges.
+
+### ✔ Distance Rings (Configurable)  
+Three rings at 25%, 50%, and 100% of the current zoom scale.  
+Rendered in a subtle dark lime‑green for low distraction.
+
+Enable/disable in `config.h`:
+
+```cpp
+#define OSD_SHOW_RINGS 1   // 1 = show rings, 0 = hide rings
+```
+
+### ✔ Distance Display Next to Home Marker  
+Distance is shown directly next to the “H” marker:
+
+- If H is above center → distance printed below  
+- If H is below center → distance printed above  
+- Units follow `OSD_UNITS` (metric or imperial)
+
+### ✔ Improved Fix Logic (Optional)  
+Supports 2D/3D fix and RMC validity for more stable home‑set behavior.
 
 ---
 
@@ -148,6 +182,8 @@ Note: This display has no BL pin.
 #define UNITS_METRIC     0
 #define UNITS_IMPERIAL   1
 #define OSD_UNITS        UNITS_METRIC
+
+#define OSD_SHOW_RINGS   1   // <— NEW
 
 #define BOOT_BAUD_DISPLAY_MS   2500
 #define RADAR_DRAW_FPS         20
@@ -165,9 +201,9 @@ Note: This display has no BL pin.
 │   ├── Display.cpp
 │   ├── GPS.h
 │   ├── GPS.cpp
-│   └── config.h
 │   ├── LED.cpp
-│   └── LED.h
+│   ├── LED.h
+│   └── config.h
 └── README.md
 ```
 
@@ -178,6 +214,9 @@ Note: This display has no BL pin.
 - Home position is captured on first valid fix  
 - GPS baud autodetected at startup  
 - Satellite count and ground speed shown on OSD  
+- **Radar zooms smoothly based on distance**  
+- **Distance rings scale dynamically**  
+- **Distance printed next to home marker**  
 - Home marker always drawn on top  
 
 ---

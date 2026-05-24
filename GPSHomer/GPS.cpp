@@ -176,7 +176,7 @@ void GPS::parseGGA(const char *s) {
         _altMSL = (int32_t)(alt * 100.0f); // m → cm
         _fixType = fix;
         _satCount = sats;
-        _hasFix = (fix >= 2);
+        _hasFix = (fix >= 1);
         _healthy = true;
         _lastUpdateMs = millis();
     }
@@ -186,6 +186,7 @@ void GPS::parseRMC(const char *s) {
     // $GxRMC,time,status,lat,NS,lon,EW,sog,cog,date,...
     const char *p = s;
     int field = 0;
+    char status = 'V';  // default invalid
 
     char sogStr[16] = {0};
     char cogStr[16] = {0};
@@ -196,6 +197,7 @@ void GPS::parseRMC(const char *s) {
     auto flushField = [&](void) {
         buf[bufPos] = '\0';
         switch (field) {
+            case 2: status = buf[0]; break;  // RMC status field
             case 7: strncpy(sogStr, buf, sizeof(sogStr) - 1); break;
             case 8: strncpy(cogStr, buf, sizeof(cogStr) - 1); break;
             default: break;
@@ -216,6 +218,10 @@ void GPS::parseRMC(const char *s) {
 
     float sogKnots = parseFloat(sogStr); // knots
     float cogDeg   = parseFloat(cogStr); // degrees
+
+    if (status == 'A') {
+        _hasFix = true;
+    }
 
     // knots → m/s → cm/s
     float sogMs = sogKnots * 0.514444f;
