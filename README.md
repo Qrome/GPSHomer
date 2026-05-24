@@ -60,11 +60,11 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 |-------------|------------|---------------|
 | VCC         | 3.3V       | Power         |
 | GND         | GND        | Ground        |
-| SCL         | GP18       | SPI Clock     |
-| SDA         | GP19       | SPI MOSI      |
-| DC          | GP16       | Data/Command  |
-| CS          | GP17       | Chip Select   |
-| RST         | GP20       | Reset         |
+| SCL         | GP2        | SPI Clock     |
+| SDA         | GP3        | SPI MOSI      |
+| DC          | GP5        | Data/Command  |
+| CS          | GP4        | Chip Select   |
+| RST         | GP6        | Reset         |
 
 Note: This display has no BL pin.
 
@@ -85,11 +85,12 @@ Note: This display has no BL pin.
 #define USER_SETUP_LOADED
 #define GC9A01_DRIVER
 
-#define TFT_MOSI 19
-#define TFT_SCLK 18
-#define TFT_CS   17
-#define TFT_DC   16
-#define TFT_RST  20
+#define PIN_LCD_CS      4
+#define PIN_LCD_DC      5
+#define PIN_LCD_RST     6
+#define PIN_LCD_SCK     2
+#define PIN_LCD_MOSI    3
+#define TOUCH_CS        -1   // <— disables warning
 
 #define TFT_BL   -1
 #define TOUCH_CS -1
@@ -165,6 +166,8 @@ Note: This display has no BL pin.
 │   ├── GPS.h
 │   ├── GPS.cpp
 │   └── config.h
+│   ├── LED.cpp
+│   └── LED.h
 └── README.md
 ```
 
