@@ -34,7 +34,8 @@ private:
         float curLatDeg,
         float curLonDeg
     );
-    void drawDistanceRings(float clampDist);
+    void drawDistanceRings(float clampDist, float headingDeg);
+    void drawNorth(float headingDeg);
     float computeDynamicClamp(float distM);
     void drawAircraft();
     void drawSpeedAndSats(float speedMs, uint8_t sats);

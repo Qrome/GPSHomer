@@ -11,6 +11,13 @@ static int   s_prevHY         = -1;
 static float s_prevClampDist  = -1.0f;
 static float s_prevSpeedMs    = -999.0f;
 static uint8_t s_prevSats     = 255;
+static int s_prevNorthTipX  = -1;
+static int s_prevNorthTipY  = -1;
+static int s_prevNorthLx    = -1;
+static int s_prevNorthLy    = -1;
+static int s_prevNorthRx    = -1;
+static int s_prevNorthRy    = -1;
+
 
 Display::Display()
     : _tft(TFT_eSPI())
@@ -37,15 +44,16 @@ void Display::showBootBaud(uint32_t baud) {
 }
 
 float Display::computeDynamicClamp(float distM) {
-    const float minClamp = 100.0f;
-    const float maxClamp = 5000.0f;
+    const float minClamp = 100.0f;   // minimum zoom
+    const float maxClamp = 1000.0f;  // maximum ring size
 
-    float d = fmaxf(distM, 1.0f);
-    float ratio = d / minClamp;
-    float zoom = minClamp * powf(ratio, 0.5f);
+    if (distM < minClamp)
+        return minClamp;
 
-    if (zoom > maxClamp) zoom = maxClamp;
-    return zoom;
+    if (distM > maxClamp)
+        return maxClamp;
+
+    return distM;  // linear scaling
 }
 
 // Background is static now – no per‑frame fillScreen()
@@ -174,11 +182,11 @@ void Display::drawHomeMarker(
         // Draw the H
         _tft.setTextColor(COLOR_HOME_TEXT, COLOR_HOME_CIRCLE);
         _tft.setTextSize(2);
-        _tft.setCursor(sx - 4, sy - 6);
+        _tft.setCursor(sx - 5, sy - 6);
         _tft.print("H");
     }
 
-    drawDistanceRings(clampDist);
+    drawDistanceRings(clampDist, headingDeg);
 
     if (!homeSet) {
         return;
@@ -188,24 +196,13 @@ void Display::drawHomeMarker(
     s_prevHY = sy;
 }
 
-void Display::drawDistanceRings(float clampDist) {
+void Display::drawDistanceRings(float clampDist, float headingDeg) {
 #if OSD_SHOW_RINGS == 0
     return;
 #endif
-
-    // Enforce minimum outer ring distance of 100 meters
-    float effectiveClamp = clampDist;
-    if (effectiveClamp < 100.0f) {
-        effectiveClamp = 100.0f;
-    }
-
-    // Maximum ring radius = 1000 m (or 3280 ft)
-    if (effectiveClamp > 1000.0f) {
-        effectiveClamp = 1000.0f;
-    }
         
     // Only redraw rings when clampDist changes significantly
-    if (s_prevClampDist > 0 && fabsf(effectiveClamp - s_prevClampDist) < 5.0f) {
+    if (s_prevClampDist > 0 && fabsf(clampDist - s_prevClampDist) < 5.0f) {
         // no redraw needed
     } else {
         // Erase old rings area
@@ -214,6 +211,7 @@ void Display::drawDistanceRings(float clampDist) {
 
     // Re‑draw aircraft (static)
     drawAircraft();
+    drawNorth(headingDeg);
 
     const float ringPercents[3] = {0.25f, 0.60f, 1.0f};
 
@@ -226,7 +224,7 @@ void Display::drawDistanceRings(float clampDist) {
 
         _tft.drawCircle(SCREEN_CENTER_X, SCREEN_CENTER_Y, radius - 2, COLOR_RING);
 
-        float ringDist = effectiveClamp * pct;
+        float ringDist = clampDist * pct;
 
 #if OSD_UNITS == UNITS_METRIC
         char buf[16];
@@ -246,7 +244,64 @@ void Display::drawDistanceRings(float clampDist) {
         _tft.print(buf);
     }
 
-    s_prevClampDist = effectiveClamp;
+    s_prevClampDist = clampDist;
+}
+
+void Display::drawNorth(float headingDeg) {
+    // --- Draw North arrow on outer ring ---
+    float psi = headingDeg * DEG_TO_RAD;
+
+    // North direction in heading‑up display (rotate world by -heading)
+    float nx = sinf(-psi);
+    float ny = cosf(-psi);
+
+    // Outer ring radius
+    int outerR = SCREEN_RADIUS - 2;
+
+    // Tip of the arrow (touching the ring)
+    int tipX = SCREEN_CENTER_X + (int)(nx * outerR);
+    int tipY = SCREEN_CENTER_Y - (int)(ny * outerR);
+
+    // Base of the arrow (slightly inward)
+    int baseR = outerR - 10;
+    int baseX = SCREEN_CENTER_X + (int)(nx * baseR);
+    int baseY = SCREEN_CENTER_Y - (int)(ny * baseR);
+
+    // Arrow width (perpendicular to North direction)
+    float px = -ny;
+    float py = nx;
+    int w = 6;
+
+    int leftX  = baseX + (int)(px * w);
+    int leftY  = baseY - (int)(py * w);
+    int rightX = baseX - (int)(px * w);
+    int rightY = baseY + (int)(py * w);
+
+    // --- ERASE previous arrow if it exists ---
+    if (s_prevNorthTipX >= 0) {
+        _tft.fillTriangle(
+            s_prevNorthTipX, s_prevNorthTipY,
+            s_prevNorthLx,   s_prevNorthLy,
+            s_prevNorthRx,   s_prevNorthRy,
+            COLOR_BACKGROUND
+        );
+    }
+
+    // --- DRAW new arrow ---
+    _tft.fillTriangle(
+        tipX,  tipY,
+        leftX, leftY,
+        rightX, rightY,
+        COLOR_RING
+    );
+
+    // Save for next erase
+    s_prevNorthTipX = tipX;
+    s_prevNorthTipY = tipY;
+    s_prevNorthLx   = leftX;
+    s_prevNorthLy   = leftY;
+    s_prevNorthRx   = rightX;
+    s_prevNorthRy   = rightY;
 }
 
 void Display::drawDistance(
@@ -257,7 +312,7 @@ void Display::drawDistance(
 ) {
     // ---- TOP-CENTER DISTANCE DISPLAY (always on top) ----
     // Erase previous distance text area
-    _tft.fillRect(SCREEN_CENTER_X - 30, 20, 90, 24, COLOR_BACKGROUND);
+    //_tft.fillRect(SCREEN_CENTER_X - 30, 20, 90, 24, COLOR_BACKGROUND);
 
     // Compute distance from home
     float dLat = (curLatDeg - homeLatDeg) * 110540.0f;
