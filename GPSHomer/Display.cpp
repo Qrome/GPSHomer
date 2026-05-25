@@ -17,6 +17,8 @@ static int s_prevNorthLx    = -1;
 static int s_prevNorthLy    = -1;
 static int s_prevNorthRx    = -1;
 static int s_prevNorthRy    = -1;
+static float s_lastValidHeading = 0.0f;
+
 
 
 Display::Display()
@@ -45,7 +47,7 @@ void Display::showBootBaud(uint32_t baud) {
 
 float Display::computeDynamicClamp(float distM) {
     const float minClamp = 100.0f;   // minimum zoom
-    const float maxClamp = 1000.0f;  // maximum ring size
+    const float maxClamp = 1609.35f;  // maximum ring size
 
     if (distM < minClamp)
         return minClamp;
@@ -86,8 +88,8 @@ void Display::drawSpeedAndSats(float speedMs, uint8_t sats) {
 
     _tft.setCursor(70, SCREEN_HEIGHT - 40);
 #if OSD_UNITS == UNITS_METRIC
-    _tft.print(speedMs, 1);
-    _tft.print(" m/s");
+    _tft.print(speedMs / 1000.0f, 1);
+    _tft.print(" kph");
 #else
     _tft.print(speedMs * 2.23694f, 0);
     _tft.print(" mph");
@@ -108,7 +110,8 @@ void Display::drawHomeMarker(
     float homeLonDeg,
     float curLatDeg,
     float curLonDeg,
-    float headingDeg
+    float headingDeg,
+    float speedMs
 ) {
     if (!homeSet) {
         // Erase any previous H if we had one
@@ -127,8 +130,21 @@ void Display::drawHomeMarker(
     float north = (homeLatDeg - curLatDeg) * 110540.0f;
     float east  = (homeLonDeg - curLonDeg) * 111320.0f * cosf(curLatDeg * DEG_TO_RAD);
 
-    // Convert ENU → aircraft body frame
-    float psi = headingDeg * DEG_TO_RAD;
+    // --- Sticky heading logic ---
+    // headingDeg is only valid when moving; freeze when stopped
+    float speedThreshold = 0.5f;  // m/s, adjust as needed
+
+    // --- Sticky heading logic ---
+    // GPS heading is only valid when moving; freeze when stopped
+    const float motionThreshold = 0.5f;  // m/s
+
+    if (speedMs > motionThreshold) {
+        // Update last valid heading only when actually moving
+        s_lastValidHeading = headingDeg;
+    }
+
+    // Use the retained heading when stopped
+    float psi = s_lastValidHeading * DEG_TO_RAD;
 
     // Forward/back (X), Right/left (Y)
     float xRot =  north * cosf(psi) + east * sinf(psi);
@@ -249,7 +265,7 @@ void Display::drawDistanceRings(float clampDist, float headingDeg) {
 
 void Display::drawNorth(float headingDeg) {
     // --- Draw North arrow on outer ring ---
-    float psi = headingDeg * DEG_TO_RAD;
+    float psi = s_lastValidHeading * DEG_TO_RAD;
 
     // North direction in heading‑up display (rotate world by -heading)
     float nx = sinf(-psi);
@@ -310,11 +326,7 @@ void Display::drawDistance(
     float curLatDeg,
     float curLonDeg
 ) {
-    // ---- TOP-CENTER DISTANCE DISPLAY (always on top) ----
-    // Erase previous distance text area
-    //_tft.fillRect(SCREEN_CENTER_X - 30, 20, 90, 24, COLOR_BACKGROUND);
-
-    // Compute distance from home
+    // Compute distance from home (meters)
     float dLat = (curLatDeg - homeLatDeg) * 110540.0f;
     float dLon = (homeLonDeg - curLonDeg) * 111320.0f * cosf(curLatDeg * DEG_TO_RAD);
     float distM = sqrtf(dLat * dLat + dLon * dLon);
@@ -322,23 +334,45 @@ void Display::drawDistance(
     // --- Smooth distance display ---
     static float filtDist = 0;
     const float alphaDist = 0.15f;
-
     filtDist = filtDist + alphaDist * (distM - filtDist);
 
-    // Draw new distance text
+    // Erase previous distance text area
+    //_tft.fillRect(SCREEN_CENTER_X - 40, 20, 120, 28, COLOR_BACKGROUND);
+
     _tft.setTextColor(COLOR_TEXT, COLOR_BACKGROUND);
     _tft.setTextSize(2);
-    _tft.setCursor(SCREEN_CENTER_X - 30, 30);
+    _tft.setCursor(SCREEN_CENTER_X - 40, 30);
 
-    #if OSD_UNITS == UNITS_METRIC
+#if OSD_UNITS == UNITS_METRIC
+    // --- METRIC MODE ---
+    if (filtDist < 1609.35f) {
+        // Show meters
         _tft.print((int)filtDist);
         _tft.print(" m");
-    #else
-        int distFt = (int)(filtDist * 3.28084f);
-        _tft.print(distFt);
+    } else {
+        // Show kilometers
+        float km = filtDist / 1000.0f;
+        _tft.print(km, 2);   // one decimal place
+        _tft.print(" km");
+    }
+
+#else
+    // --- IMPERIAL MODE ---
+    float distFt = filtDist * 3.28084f;
+
+    if (distFt < 5280.0f) {
+        // Show feet
+        _tft.print((int)distFt);
         _tft.print(" ft");
-    #endif
+    } else {
+        // Show miles
+        float miles = distFt / 5280.0f;
+        _tft.print(miles, 2);  // one decimal place
+        _tft.print(" mi");
+    }
+#endif
 }
+
 
 void Display::render(
     bool homeSet,
@@ -353,7 +387,7 @@ void Display::render(
     _tft.startWrite();
 
     drawHomeMarker(
-        homeSet, homeLatDeg, homeLonDeg, curLatDeg, curLonDeg, headingDeg
+        homeSet, homeLatDeg, homeLonDeg, curLatDeg, curLonDeg, headingDeg, speedMs
     );
 
     drawDistance(homeLatDeg, homeLonDeg, curLatDeg, curLonDeg);

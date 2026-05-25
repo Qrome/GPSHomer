@@ -45,6 +45,7 @@ private:
         float homeLonDeg,
         float curLatDeg,
         float curLonDeg,
-        float headingDeg
+        float headingDeg,
+        float speedMs
     );
 };
