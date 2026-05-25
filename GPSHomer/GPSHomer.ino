@@ -66,6 +66,7 @@ void setup() {
     // Show boot baud (will be updated once setup1 detects real baud)
     display.showBootBaud(g_detectedBaud);
     delay(BOOT_BAUD_DISPLAY_MS);
+    display.drawBackground();
 }
 
 
@@ -100,10 +101,8 @@ void loop() {
 // Core 1 setup
 void setup1() {
     // Wait for USB Serial to be ready
-    while (!Serial) {
-        tight_loop_contents();  // keeps Core 1 responsive
-    }
-
+    delay(5000);
+    
     // Assign GPS UART pins
     Serial1.setRX(PIN_GPS_RX);
     Serial1.setTX(PIN_GPS_TX);

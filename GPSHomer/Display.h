@@ -12,7 +12,7 @@ public:
 
     // Show boot splash with detected baud
     void showBootBaud(uint32_t baud);
-
+    void drawBackground();
     // Render radar frame
     void render(
         bool homeSet,
@@ -28,12 +28,17 @@ public:
 private:
     TFT_eSPI _tft;
 
-    void drawBackground();
+    void drawDistance(
+        float homeLatDeg,
+        float homeLonDeg,
+        float curLatDeg,
+        float curLonDeg
+    );
     void drawDistanceRings(float clampDist);
     float computeDynamicClamp(float distM);
     void drawAircraft();
     void drawSpeedAndSats(float speedMs, uint8_t sats);
-    float drawHomeMarker(
+    void drawHomeMarker(
         bool homeSet,
         float homeLatDeg,
         float homeLonDeg,

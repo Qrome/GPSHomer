@@ -5,6 +5,13 @@
 #define DEG_TO_RAD 0.017453292519943295f
 #endif
 
+// --- Local state for previous dynamic elements (no header changes needed) ---
+static int   s_prevHX         = -1;
+static int   s_prevHY         = -1;
+static float s_prevClampDist  = -1.0f;
+static float s_prevSpeedMs    = -999.0f;
+static uint8_t s_prevSats     = 255;
+
 Display::Display()
     : _tft(TFT_eSPI())
 {
@@ -14,6 +21,9 @@ void Display::begin() {
     _tft.init();
     _tft.setRotation(0);
     _tft.fillScreen(COLOR_BACKGROUND);
+
+    // Static aircraft symbol – draw once
+    drawAircraft();
 }
 
 void Display::showBootBaud(uint32_t baud) {
@@ -21,32 +31,26 @@ void Display::showBootBaud(uint32_t baud) {
     _tft.setTextColor(COLOR_TEXT, COLOR_BACKGROUND);
     _tft.setTextSize(2);
     _tft.setCursor(20, 100);
-    _tft.print("GPS Baud:");
-    _tft.setCursor(20, 130);
-    _tft.print(baud);
+    _tft.print("GPSHomer by Qrome");
+    // _tft.setCursor(20, 130);
+    // _tft.print(baud);
 }
 
 float Display::computeDynamicClamp(float distM) {
-    // Minimum and maximum zoom levels
-    const float minClamp = 100.0f;    // closest zoom
-    const float maxClamp = 5000.0f;   // farthest zoom
+    const float minClamp = 100.0f;
+    const float maxClamp = 5000.0f;
 
-    // Avoid log(0)
     float d = fmaxf(distM, 1.0f);
-
-    // Logarithmic interpolation:
-    // clamp = minClamp * (d / minClamp)^0.5
-    // This gives smooth, natural zooming
     float ratio = d / minClamp;
-    float zoom = minClamp * powf(ratio, 0.5f);  // sqrt curve
+    float zoom = minClamp * powf(ratio, 0.5f);
 
-    // Clamp to max
     if (zoom > maxClamp) zoom = maxClamp;
-
     return zoom;
 }
 
+// Background is static now – no per‑frame fillScreen()
 void Display::drawBackground() {
+    // Intentionally empty
     _tft.fillScreen(COLOR_BACKGROUND);
 }
 
@@ -60,11 +64,19 @@ void Display::drawAircraft() {
 }
 
 void Display::drawSpeedAndSats(float speedMs, uint8_t sats) {
+    // Only update if changed enough to matter
+    if (fabsf(speedMs - s_prevSpeedMs) < 0.1f && sats == s_prevSats) {
+        // return;
+    } else {
+        // Erase old speed/sats area
+        //_tft.fillRect(70, SCREEN_HEIGHT - 40, 140, 22, COLOR_BACKGROUND);
+        //_tft.fillRect(SCREEN_WIDTH - 95, SCREEN_HEIGHT - 40, 90, 22, COLOR_BACKGROUND);
+    }
+
     _tft.setTextColor(COLOR_TEXT, COLOR_BACKGROUND);
     _tft.setTextSize(2);
 
-    _tft.setCursor(10, SCREEN_HEIGHT - 24);
-
+    _tft.setCursor(70, SCREEN_HEIGHT - 40);
 #if OSD_UNITS == UNITS_METRIC
     _tft.print(speedMs, 1);
     _tft.print(" m/s");
@@ -73,12 +85,16 @@ void Display::drawSpeedAndSats(float speedMs, uint8_t sats) {
     _tft.print(" mph");
 #endif
 
-    _tft.setCursor(SCREEN_WIDTH - 80, SCREEN_HEIGHT - 24);
+    _tft.setTextSize(1);
+    _tft.setCursor(SCREEN_WIDTH - 85, SCREEN_HEIGHT - 40);
     _tft.print((int)sats);
-    _tft.print("^");
+    _tft.print(" sat");
+    
+    s_prevSpeedMs = speedMs;
+    s_prevSats    = sats;
 }
 
-float Display::drawHomeMarker(
+void Display::drawHomeMarker(
     bool homeSet,
     float homeLatDeg,
     float homeLonDeg,
@@ -87,72 +103,89 @@ float Display::drawHomeMarker(
     float headingDeg
 ) {
     if (!homeSet) {
-        return 100.0f;   // safe default clamp distance
+        // Erase any previous H if we had one
+        if (s_prevHX >= 0) {
+            _tft.fillCircle(s_prevHX, s_prevHY, HOME_MARKER_RADIUS + 5, COLOR_BACKGROUND);
+            s_prevHX = -1;
+            s_prevHY = -1;
+        }
     }
 
+    // Correct deltas: home minus current
     float dLat = (curLatDeg - homeLatDeg) * 110540.0f;
-    float dLon = (curLonDeg - homeLonDeg) * 111320.0f * cosf(homeLatDeg * DEG_TO_RAD);
+    float dLon = (curLonDeg - homeLonDeg) * 111320.0f * cosf(curLatDeg * DEG_TO_RAD);
 
-    float theta = -headingDeg * DEG_TO_RAD;
+    // Compute ENU deltas (North, East)
+    float north = (homeLatDeg - curLatDeg) * 110540.0f;
+    float east  = (homeLonDeg - curLonDeg) * 111320.0f * cosf(curLatDeg * DEG_TO_RAD);
 
-    float xRot = dLon * cosf(theta) - dLat * sinf(theta);
-    float yRot = dLon * sinf(theta) + dLat * cosf(theta);
+    // Convert ENU → aircraft body frame
+    float psi = headingDeg * DEG_TO_RAD;
 
-    float dist = sqrtf(xRot * xRot + yRot * yRot);
+    // Forward/back (X), Right/left (Y)
+    float xRot =  north * cosf(psi) + east * sinf(psi);
+    float yRot = -north * sinf(psi) + east * cosf(psi);
 
+    // --- Smooth H marker movement ---
+    static bool first = true;
+    static float filtX = 0;
+    static float filtY = 0;
+    const float alpha = 0.2f;
+
+    if (first) {
+        filtX = xRot;
+        filtY = yRot;
+        first = false;
+    } else {
+        filtX = filtX + alpha * (xRot - filtX);
+        filtY = filtY + alpha * (yRot - filtY);
+    }
+
+    float dist = sqrtf(filtX * filtX + filtY * filtY);
     float clampDist = computeDynamicClamp(dist);
 
     float screenX, screenY;
 
     if (dist <= clampDist || dist == 0.0f) {
-        float scale = (float)SCREEN_RADIUS / clampDist;
-        screenX = SCREEN_CENTER_X + xRot * scale;
-        screenY = SCREEN_CENTER_Y - yRot * scale;
+        float edge = SCREEN_RADIUS - HOME_MARKER_RADIUS;
+        float scale = edge / clampDist;
+
+        screenX = SCREEN_CENTER_X + filtY * scale;
+        screenY = SCREEN_CENTER_Y - filtX * scale;
     } else {
-        screenX = SCREEN_CENTER_X + (xRot / dist) * SCREEN_RADIUS;
-        screenY = SCREEN_CENTER_Y - (yRot / dist) * SCREEN_RADIUS;
+        float edge = SCREEN_RADIUS - HOME_MARKER_RADIUS;
+        screenX = SCREEN_CENTER_X + (filtY / dist) * edge;
+        screenY = SCREEN_CENTER_Y - (filtX / dist) * edge;
     }
 
-    // Draw the filled circle for H
-    _tft.fillCircle((int)screenX, (int)screenY, HOME_MARKER_RADIUS, COLOR_HOME_CIRCLE);
+    int sx = (int)screenX;
+    int sy = (int)screenY;
 
-    // Draw the H
-    _tft.setTextColor(COLOR_HOME_TEXT, COLOR_HOME_CIRCLE);
-    _tft.setTextSize(1);
-    _tft.setCursor((int)screenX - 3, (int)screenY - 4);
-    _tft.print("H");
-
-    // ---- NEW: Draw distance next to the H marker ----
-    float distM = dist; // already in meters
-
-    char buf[16];
-
-#if OSD_UNITS == UNITS_METRIC
-    snprintf(buf, sizeof(buf), "%dm", (int)distM);
-#else
-    int distFt = (int)(distM * 3.28084f);
-    snprintf(buf, sizeof(buf), "%dft", distFt);
-#endif
-
-    _tft.setTextColor(TFT_SKYBLUE, COLOR_BACKGROUND);
-    _tft.setTextSize(1);
-
-    int textX = (int)screenX + HOME_MARKER_RADIUS + 4;  // right of H
-    int textY;
-
-    // If H is below center → print above
-    if (screenY > SCREEN_CENTER_Y) {
-        textY = (int)screenY - HOME_MARKER_RADIUS - 10;
-    }
-    // If H is above center → print below
-    else {
-        textY = (int)screenY + HOME_MARKER_RADIUS + 2;
+    // Erase old H + distance text area
+    if (s_prevHX >= 0) {
+        _tft.fillCircle(s_prevHX, s_prevHY, HOME_MARKER_RADIUS + 2, COLOR_BACKGROUND);
     }
 
-    _tft.setCursor(textX, textY);
-    _tft.print(buf);
+    if (homeSet) {
+        // Draw new H circle
+        _tft.fillCircle(sx, sy, HOME_MARKER_RADIUS, COLOR_HOME_CIRCLE);
+        _tft.drawCircle(sx, sy, HOME_MARKER_RADIUS, TFT_RED);
 
-    return clampDist;
+        // Draw the H
+        _tft.setTextColor(COLOR_HOME_TEXT, COLOR_HOME_CIRCLE);
+        _tft.setTextSize(2);
+        _tft.setCursor(sx - 4, sy - 6);
+        _tft.print("H");
+    }
+
+    drawDistanceRings(clampDist);
+
+    if (!homeSet) {
+        return;
+    }
+
+    s_prevHX = sx;
+    s_prevHY = sy;
 }
 
 void Display::drawDistanceRings(float clampDist) {
@@ -160,8 +193,29 @@ void Display::drawDistanceRings(float clampDist) {
     return;
 #endif
 
-    // Ring radii as percentages of clamp distance
-    const float ringPercents[3] = {0.25f, 0.50f, 1.0f};
+    // Enforce minimum outer ring distance of 100 meters
+    float effectiveClamp = clampDist;
+    if (effectiveClamp < 100.0f) {
+        effectiveClamp = 100.0f;
+    }
+
+    // Maximum ring radius = 1000 m (or 3280 ft)
+    if (effectiveClamp > 1000.0f) {
+        effectiveClamp = 1000.0f;
+    }
+        
+    // Only redraw rings when clampDist changes significantly
+    if (s_prevClampDist > 0 && fabsf(effectiveClamp - s_prevClampDist) < 5.0f) {
+        // no redraw needed
+    } else {
+        // Erase old rings area
+        _tft.fillCircle(SCREEN_CENTER_X, SCREEN_CENTER_Y, SCREEN_RADIUS, COLOR_BACKGROUND);
+    }
+
+    // Re‑draw aircraft (static)
+    drawAircraft();
+
+    const float ringPercents[3] = {0.25f, 0.60f, 1.0f};
 
     _tft.setTextColor(COLOR_RING, COLOR_BACKGROUND);
     _tft.setTextSize(1);
@@ -170,27 +224,66 @@ void Display::drawDistanceRings(float clampDist) {
         float pct = ringPercents[i];
         int radius = (int)(SCREEN_RADIUS * pct);
 
-        // Draw the ring
-        _tft.drawCircle(SCREEN_CENTER_X, SCREEN_CENTER_Y, radius, COLOR_RING);
+        _tft.drawCircle(SCREEN_CENTER_X, SCREEN_CENTER_Y, radius - 2, COLOR_RING);
 
-        // Label the ring
-        float ringDist = clampDist * pct;
+        float ringDist = effectiveClamp * pct;
 
 #if OSD_UNITS == UNITS_METRIC
         char buf[16];
-        snprintf(buf, sizeof(buf), "%dm", (int)ringDist);
+        snprintf(buf, sizeof(buf), "%d", (int)ringDist);
 #else
         int ft = (int)(ringDist * 3.28084f);
         char buf[16];
-        snprintf(buf, sizeof(buf), "%dft", ft);
+        snprintf(buf, sizeof(buf), "%d", ft);
 #endif
 
-        // Draw label slightly above the ring
-        _tft.setCursor(SCREEN_CENTER_X + radius + 4, SCREEN_CENTER_Y - 4);
+        int xText = SCREEN_CENTER_X + radius + 4;
+        if (i == 2) {
+            xText = 8;
+        }
+
+        _tft.setCursor(xText, SCREEN_CENTER_Y - 4);
         _tft.print(buf);
     }
+
+    s_prevClampDist = effectiveClamp;
 }
 
+void Display::drawDistance(
+    float homeLatDeg,
+    float homeLonDeg,
+    float curLatDeg,
+    float curLonDeg
+) {
+    // ---- TOP-CENTER DISTANCE DISPLAY (always on top) ----
+    // Erase previous distance text area
+    _tft.fillRect(SCREEN_CENTER_X - 30, 20, 90, 24, COLOR_BACKGROUND);
+
+    // Compute distance from home
+    float dLat = (curLatDeg - homeLatDeg) * 110540.0f;
+    float dLon = (homeLonDeg - curLonDeg) * 111320.0f * cosf(curLatDeg * DEG_TO_RAD);
+    float distM = sqrtf(dLat * dLat + dLon * dLon);
+
+    // --- Smooth distance display ---
+    static float filtDist = 0;
+    const float alphaDist = 0.15f;
+
+    filtDist = filtDist + alphaDist * (distM - filtDist);
+
+    // Draw new distance text
+    _tft.setTextColor(COLOR_TEXT, COLOR_BACKGROUND);
+    _tft.setTextSize(2);
+    _tft.setCursor(SCREEN_CENTER_X - 30, 30);
+
+    #if OSD_UNITS == UNITS_METRIC
+        _tft.print((int)filtDist);
+        _tft.print(" m");
+    #else
+        int distFt = (int)(filtDist * 3.28084f);
+        _tft.print(distFt);
+        _tft.print(" ft");
+    #endif
+}
 
 void Display::render(
     bool homeSet,
@@ -202,14 +295,13 @@ void Display::render(
     float speedMs,
     uint8_t sats
 ) {
-    drawBackground();
-    drawAircraft();
-    drawSpeedAndSats(speedMs, sats);
+    _tft.startWrite();
 
-    float clampDist = drawHomeMarker(
+    drawHomeMarker(
         homeSet, homeLatDeg, homeLonDeg, curLatDeg, curLonDeg, headingDeg
     );
 
-    drawDistanceRings(clampDist);
+    drawDistance(homeLatDeg, homeLonDeg, curLatDeg, curLonDeg);
+    drawSpeedAndSats(speedMs, sats);
+    _tft.endWrite();
 }
-
