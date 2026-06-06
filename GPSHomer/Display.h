@@ -13,6 +13,7 @@ public:
     // Show boot splash with detected baud
     void showBootBaud(uint32_t baud);
     void drawBackground();
+    void showSummary(float maxDist, float maxSpeed, float totalDist, float avgSpeed, uint32_t flightStartMs);
     // Render radar frame
     void render(
         bool homeSet,
@@ -48,4 +49,9 @@ private:
         float headingDeg,
         float speedMs
     );
+    void drawIconRadar(int x, int y, uint16_t color);
+    void drawIconSpeedometer(int x, int y, uint16_t color);
+    void drawIconPath(int x, int y, uint16_t color);
+    void drawIconGauge(int x, int y, uint16_t color);
+    void drawIconClock(int x, int y, uint16_t color);
 };

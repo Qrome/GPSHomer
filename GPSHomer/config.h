@@ -8,8 +8,10 @@
 
 #define OSD_UNITS        UNITS_IMPERIAL
 
-#define RC_PWM_PIN 7
+#define RC_PWM_PIN 27
 #define RC_THRESHOLD 1700
+#define RC_DOUBLE_TAP_WINDOW_MS 1000   // 1 second
+#define RC_SUMMARY_HOLD_MS        600    // hold high to show summary
 
 // -----------------------------
 // Hardware Pins
@@ -21,8 +23,8 @@
 //#define PIN_LCD_CS      4
 //#define PIN_LCD_DC      5
 //#define PIN_LCD_RST     6
-//#define PIN_LCD_SCK     2
-//#define PIN_LCD_MOSI    3
+//#define PIN_LCD_SCK     2    //SCL
+//#define PIN_LCD_MOSI    3    //SDA
 //#define TOUCH_CS        -1   // <— disables warning
 //#define TFT_BL   -1
 

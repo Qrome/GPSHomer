@@ -15,6 +15,18 @@ volatile float g_speedMs      = 0.0f;
 volatile float g_headingDeg   = 0.0f;
 volatile uint8_t g_sats       = 0;
 
+volatile float g_maxDistance = 0.0f;
+volatile float g_maxSpeed = 0.0f;
+volatile float g_totalDistance = 0.0f;
+volatile float g_avgSpeed = 0.0f;
+volatile uint32_t g_flightStartMs = 0;
+bool g_showingSummary = false;
+static float fs_lastLat = 0;
+static float fs_lastLon = 0;
+static bool  fs_first   = true;
+
+
+
 GPS gps;
 Display display;
 StatusLED led;
@@ -24,33 +36,166 @@ bool g_baudReported = false;
 uint32_t g_lastGpsDataMs = 0;
 bool rcHighDetected = false;
 
+void resetFlightSummary() {
+    g_maxDistance = 0;
+    g_maxSpeed = 0;
+    g_totalDistance = 0;
+    g_avgSpeed = 0;
+    g_flightStartMs = millis();
+}
+
 unsigned long readRcPwm() {
     // Reads HIGH pulse width in microseconds
     return pulseIn(RC_PWM_PIN, HIGH, 25000);  // 25ms timeout
 }
 
 void checkRcResetTrigger() {
+    static bool prevHigh = false;
+    static unsigned long highStart = 0;
+    static unsigned long lastClickTime = 0;
+    static int clickCount = 0;
+
     unsigned long pwm = readRcPwm();
-    if (pwm == 0) return;  // no signal or timeout
+    if (pwm == 0) return;
 
-    // Rising edge: above threshold
-    if (!rcHighDetected && pwm > RC_THRESHOLD) {
-        rcHighDetected = true;
+    bool isHigh = pwm > RC_THRESHOLD;
+    unsigned long now = millis();
+
+    // ----------------------------------------------------
+    // SUMMARY MODE: ignore ALL click logic
+    // ----------------------------------------------------
+    if (g_showingSummary) {
+
+        // Exit summary when PWM goes LOW
+        if (!isHigh && prevHigh) {
+            g_showingSummary = false;
+            display.drawBackground();
+        }
+
+        prevHigh = isHigh;
+        return;   // <<< prevents click detection
     }
 
-    // Falling edge: below threshold AFTER being high
-    if (rcHighDetected && pwm < RC_THRESHOLD) {
-        rcHighDetected = false;
-        resetHomePosition();   // <-- your function
+    // ----------------------------------------------------
+    // Detect rising edge (LOW → HIGH)
+    // ----------------------------------------------------
+    if (isHigh && !prevHigh) {
+        highStart = now;
     }
+
+    // ----------------------------------------------------
+    // HIGH hold → enter summary mode
+    // ----------------------------------------------------
+    if (isHigh && (now - highStart >= RC_SUMMARY_HOLD_MS)) {
+        g_showingSummary = true;
+
+        float maxD, maxS, totD, avgS;
+        uint32_t startMs;
+
+        noInterrupts();
+        maxD    = g_maxDistance;
+        maxS    = g_maxSpeed;
+        totD    = g_totalDistance;
+        avgS    = g_avgSpeed;
+        startMs = g_flightStartMs;
+        interrupts();
+
+        display.showSummary(maxD, maxS, totD, avgS, startMs);
+
+        prevHigh = isHigh;
+        return;
+    }
+
+    // ----------------------------------------------------
+    // Detect falling edge (HIGH → LOW) → click detection
+    // ----------------------------------------------------
+    if (!isHigh && prevHigh) {
+
+        if (now - lastClickTime <= RC_DOUBLE_TAP_WINDOW_MS) {
+            clickCount++;
+        } else {
+            clickCount = 1;
+        }
+
+        lastClickTime = now;
+
+        // Double tap detected → reset home
+        if (clickCount == 2) {
+            clickCount = 0;
+            resetHomePosition();
+        }
+    }
+
+    prevHigh = isHigh;
 }
+
 
 void resetHomePosition() {
-    if (gps.hasFix()) {
-        g_homeLatDeg = gps.getLatitude();
-        g_homeLonDeg = gps.getLongitude();
+    if (!gps.hasFix()) {
+        return;   // do NOT reset home without a valid fix
+    }
+
+    // GPS library returns 1e-7 scaled integers
+    int32_t lat1e7 = gps.getLatitude();
+    int32_t lon1e7 = gps.getLongitude();
+
+    float lat = lat1e7 * 1e-7f;
+    float lon = lon1e7 * 1e-7f;
+
+    // Reject invalid coordinates
+    if (!isfinite(lat) || !isfinite(lon)) return;
+    if (lat == 0.0f && lon == 0.0f) return;
+    if (fabs(lat) > 90.0f || fabs(lon) > 180.0f) return;
+
+    g_homeLatDeg = lat;
+    g_homeLonDeg = lon;
+    g_homeSet = true;
+
+    resetFlightSummary();
+    fs_first = true;
+}
+
+
+
+
+void updateFlightSummary(float latDeg, float lonDeg, float speedMs) {
+
+    if (g_showingSummary) {
+        return;   // freeze summary values while summary screen is active
+    }
+
+    if (!g_homeSet) {
+        fs_first = true;
+        return;
+    }
+
+    float dLat = (latDeg - g_homeLatDeg) * 110540.0f;
+    float dLon = (lonDeg - g_homeLonDeg) * 111320.0f * cosf(latDeg * DEG_TO_RAD);
+    float distM = sqrtf(dLat*dLat + dLon*dLon);
+
+    if (distM > g_maxDistance)
+        g_maxDistance = distM;
+
+    if (speedMs > g_maxSpeed)
+        g_maxSpeed = speedMs;
+
+    if (!fs_first) {
+        float dLat2 = (latDeg - fs_lastLat) * 110540.0f;
+        float dLon2 = (lonDeg - fs_lastLon) * 111320.0f * cosf(latDeg * DEG_TO_RAD);
+        float segment = sqrtf(dLat2*dLat2 + dLon2*dLon2);
+        g_totalDistance += segment;
+    }
+
+    fs_first = false;
+    fs_lastLat = latDeg;
+    fs_lastLon = lonDeg;
+
+    uint32_t elapsed = millis() - g_flightStartMs;
+    if (elapsed > 0) {
+        g_avgSpeed = g_totalDistance / (elapsed * 0.001f);
     }
 }
+
 
 void setup() {
     Serial.begin(115200);
@@ -94,7 +239,9 @@ void loop() {
         interrupts();
 
         checkRcResetTrigger();
-        display.render(homeSet, homeLat, homeLon, curLat, curLon, heading, speed, sats);
+        if (!g_showingSummary) {
+            display.render(homeSet, homeLat, homeLon, curLat, curLon, heading, speed, sats);
+        }
     }
 }
 
@@ -165,18 +312,38 @@ void loop1() {
             float headingDeg = gps.getCourse() * 0.1f;    // deg*10 → deg
             uint8_t sats = gps.getSatCount();
 
-            if (sats >= 6 && !g_homeSet) {
-                led.green();
-                g_homeLatDeg = latDeg;
-                g_homeLonDeg = lonDeg;
-                g_homeSet = true;
+            // AUTO‑SET HOME ON FIRST VALID FIX
+            if (!g_homeSet && gps.hasFix() && sats >= 6) {
+
+                int32_t lat1e7 = gps.getLatitude();
+                int32_t lon1e7 = gps.getLongitude();
+
+                float lat = lat1e7 * 1e-7f;
+                float lon = lon1e7 * 1e-7f;
+
+                // Validate coordinates
+                if (lat != 0.0f && lon != 0.0f &&
+                    isfinite(lat) && isfinite(lon) &&
+                    fabs(lat) <= 90.0f && fabs(lon) <= 180.0f)
+                {
+                    led.green();
+                    g_homeLatDeg = lat;
+                    g_homeLonDeg = lon;
+                    g_homeSet = true;
+
+                    resetFlightSummary();
+                    fs_first = true;
+                }
             }
+
 
             g_curLatDeg  = latDeg;
             g_curLonDeg  = lonDeg;
             g_speedMs    = speedMs;
             g_headingDeg = headingDeg;
             g_sats       = sats;
+
+            updateFlightSummary(latDeg, lonDeg, speedMs);
         }
 
         // GPS communication timeout → LED amber

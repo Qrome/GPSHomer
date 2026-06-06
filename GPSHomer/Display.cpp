@@ -337,7 +337,7 @@ void Display::drawDistance(
     filtDist = filtDist + alphaDist * (distM - filtDist);
 
     // Erase previous distance text area
-    //_tft.fillRect(SCREEN_CENTER_X - 40, 20, 120, 28, COLOR_BACKGROUND);
+    //_tft.fillRect(SCREEN_CENTER_X - 40, 26, 90, 20, TFT_BLUE);
 
     _tft.setTextColor(COLOR_TEXT, COLOR_BACKGROUND);
     _tft.setTextSize(2);
@@ -348,12 +348,12 @@ void Display::drawDistance(
     if (filtDist < 1609.35f) {
         // Show meters
         _tft.print((int)filtDist);
-        _tft.print(" m");
+        _tft.print(" m ");
     } else {
         // Show kilometers
         float km = filtDist / 1000.0f;
         _tft.print(km, 2);   // one decimal place
-        _tft.print(" km");
+        _tft.print(" km ");
     }
 
 #else
@@ -363,15 +363,188 @@ void Display::drawDistance(
     if (distFt < 5280.0f) {
         // Show feet
         _tft.print((int)distFt);
-        _tft.print(" ft");
+        _tft.print(" ft ");
     } else {
         // Show miles
         float miles = distFt / 5280.0f;
         _tft.print(miles, 2);  // one decimal place
-        _tft.print(" mi");
+        _tft.print(" mi ");
     }
 #endif
 }
+
+// --- Small summary icons ---
+void Display::drawIconRadar(int x, int y, uint16_t color) {
+    _tft.drawCircle(x, y, 6, color);
+    _tft.drawCircle(x, y, 3, color);
+    _tft.drawLine(x, y, x + 6, y - 6, color);
+}
+
+void Display::drawIconSpeedometer(int x, int y, uint16_t color) {
+    _tft.drawCircle(x, y, 6, color);
+    _tft.drawLine(x, y, x + 4, y - 4, color);
+    _tft.drawLine(x, y, x + 6, y, color);
+}
+
+void Display::drawIconPath(int x, int y, uint16_t color) {
+    _tft.fillCircle(x, y, 2, color);
+    _tft.drawLine(x + 2, y, x + 10, y, color);
+    _tft.fillCircle(x + 12, y, 2, color);
+}
+
+void Display::drawIconGauge(int x, int y, uint16_t color) {
+    _tft.drawCircle(x, y, 6, color);
+    _tft.drawLine(x, y, x + 4, y - 4, color);
+}
+
+void Display::drawIconClock(int x, int y, uint16_t color) {
+    _tft.drawCircle(x, y, 6, color);
+    _tft.drawLine(x, y, x, y - 4, color);
+    _tft.drawLine(x, y, x + 3, y, color);
+}
+
+
+void Display::showSummary(float maxDist, float maxSpeed, float totalDist, float avgSpeed, uint32_t flightStartMs) {
+    _tft.fillScreen(TFT_BLACK);
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    _tft.setTextSize(2);
+
+    _tft.setCursor(75, 20);
+    _tft.print("SUMMARY");
+
+    float maxDistOut   = maxDist;
+    float totalDistOut = totalDist;
+    const char* distUnitShort = nullptr;
+    const char* distUnitLong  = nullptr;
+    float maxSpeedOut = 0.0f;
+    float avgSpeedOut = 0.0f;
+    const char* speedUnit = nullptr;
+
+    // how many decimals to show for distances
+    int maxDistPrec   = 0;
+    int totalDistPrec = 0;
+
+#if OSD_UNITS == UNITS_METRIC
+    distUnitShort = "m";
+    distUnitLong  = "km";
+
+    // Switch to km if either value exceeds 1000 m
+    bool useKm = (totalDist > 1000.0f) || (maxDist > 1000.0f);
+
+    if (useKm) {
+        maxDistOut   = maxDist / 1000.0f;
+        totalDistOut = totalDist / 1000.0f;
+        distUnitShort = distUnitLong;
+        maxDistPrec   = 2;
+        totalDistPrec = 2;
+    } else {
+        maxDistPrec   = 0;
+        totalDistPrec = 0;
+    }
+
+    maxSpeedOut = maxSpeed * 3.6f;
+    avgSpeedOut = avgSpeed * 3.6f;
+    speedUnit   = "km/h";
+
+#else
+    float maxDistFt   = maxDist * 3.28084f;
+    float totalDistFt = totalDist * 3.28084f;
+
+    maxDistOut   = maxDistFt;
+    totalDistOut = totalDistFt;
+    distUnitShort = "ft";
+    distUnitLong  = "mi";
+
+    // Switch to miles if either value exceeds 5280 ft
+    bool useMiles = (totalDistFt > 5280.0f) || (maxDistFt > 5280.0f);
+
+    if (useMiles) {
+        maxDistOut   = maxDistFt / 5280.0f;
+        totalDistOut = totalDistFt / 5280.0f;
+        distUnitShort = distUnitLong;
+        maxDistPrec   = 2;
+        totalDistPrec = 2;
+    } else {
+        maxDistPrec   = 0;
+        totalDistPrec = 0;
+    }
+
+    maxSpeedOut = maxSpeed * 2.23694f;
+    avgSpeedOut = avgSpeed * 2.23694f;
+    speedUnit   = "mph";
+#endif
+
+    // --- Overflow protection (prevents "ovf") ---
+    if (!isfinite(maxDistOut)   || maxDistOut   > 999999.0f) maxDistOut   = 999999.0f;
+    if (!isfinite(totalDistOut) || totalDistOut > 999999.0f) totalDistOut = 999999.0f;
+
+    // Flight time
+    uint32_t elapsedMs = millis() - flightStartMs;
+    uint32_t totalSec  = elapsedMs / 1000;
+    uint32_t hours     = totalSec / 3600;
+    uint32_t minutes   = (totalSec % 3600) / 60;
+    uint32_t seconds   = totalSec % 60;
+
+    char timeBuf[16];
+    if (hours > 0)
+        snprintf(timeBuf, sizeof(timeBuf), "%02u:%02u:%02u", hours, minutes, seconds);
+    else
+        snprintf(timeBuf, sizeof(timeBuf), "%02u:%02u", minutes, seconds);
+
+    uint16_t iconColor  = TFT_GREEN;
+    uint16_t valueColor = TFT_YELLOW;
+
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    _tft.setTextSize(2);
+
+    // Max Distance
+    drawIconRadar(40, 55, iconColor);
+    _tft.setCursor(50, 50);
+    _tft.print("M Dst:");
+    _tft.setTextColor(valueColor, TFT_BLACK);
+    _tft.print(maxDistOut, maxDistPrec);
+    _tft.print(" ");
+    _tft.print(distUnitShort);
+
+    // Max Speed
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawIconSpeedometer(20, 85, iconColor);
+    _tft.setCursor(30, 80);
+    _tft.print("M Spd:");
+    _tft.setTextColor(valueColor, TFT_BLACK);
+    _tft.print(maxSpeedOut, 1);
+    _tft.print(" ");
+    _tft.print(speedUnit);
+
+    // Total Distance
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawIconPath(10, 115, iconColor);
+    _tft.setCursor(30, 110);
+    _tft.print("T Dst:");
+    _tft.setTextColor(valueColor, TFT_BLACK);
+    _tft.print(totalDistOut, totalDistPrec);
+    _tft.print(" ");
+    _tft.print(distUnitShort);
+
+    // Avg Speed
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawIconGauge(20, 145, iconColor);
+    _tft.setCursor(30, 140);
+    _tft.print("A Spd:");
+    _tft.setTextColor(valueColor, TFT_BLACK);
+    _tft.print(avgSpeedOut, 1);
+    _tft.print(" ");
+    _tft.print(speedUnit);
+
+    // Flight Time
+    _tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    drawIconClock(40, 175, iconColor);
+    _tft.setCursor(50, 170);
+    _tft.print("Time:");
+    _tft.setTextColor(valueColor, TFT_BLACK);
+    _tft.print(timeBuf);
+}
+
 
 
 void Display::render(
@@ -386,11 +559,12 @@ void Display::render(
 ) {
     _tft.startWrite();
 
+    drawDistance(homeLatDeg, homeLonDeg, curLatDeg, curLonDeg);
+
     drawHomeMarker(
         homeSet, homeLatDeg, homeLonDeg, curLatDeg, curLonDeg, headingDeg, speedMs
     );
 
-    drawDistance(homeLatDeg, homeLonDeg, curLatDeg, curLonDeg);
     drawSpeedAndSats(speedMs, sats);
     _tft.endWrite();
 }
