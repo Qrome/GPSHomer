@@ -45,9 +45,16 @@ void resetFlightSummary() {
 }
 
 unsigned long readRcPwm() {
-    // Reads HIGH pulse width in microseconds
-    return pulseIn(RC_PWM_PIN, HIGH, 25000);  // 25ms timeout
+    unsigned long pulse = pulseIn(RC_PWM_PIN, HIGH, 25000);  // 25ms timeout
+
+    // No signal or floating pin → return 0
+    if (pulse < 900 || pulse > 2200) {
+        return 0;
+    }
+
+    return pulse;
 }
+
 
 void checkRcResetTrigger() {
     static bool prevHigh = false;
@@ -56,7 +63,17 @@ void checkRcResetTrigger() {
     static int clickCount = 0;
 
     unsigned long pwm = readRcPwm();
-    if (pwm == 0) return;
+    bool pwmValid = (pwm >= 900 && pwm <= 2200);
+
+    // ----------------------------------------------------
+    // NO RC SIGNAL → disable summary mode completely
+    // ----------------------------------------------------
+    if (!pwmValid) {
+        g_showingSummary = false;
+        prevHigh = false;
+        clickCount = 0;
+        return;
+    }
 
     bool isHigh = pwm > RC_THRESHOLD;
     unsigned long now = millis();
