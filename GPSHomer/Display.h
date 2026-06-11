@@ -54,4 +54,5 @@ private:
     void drawIconPath(int x, int y, uint16_t color);
     void drawIconGauge(int x, int y, uint16_t color);
     void drawIconClock(int x, int y, uint16_t color);
+    void drawTrail(float homeLat, float homeLon, float headingDeg, float clampDist);
 };

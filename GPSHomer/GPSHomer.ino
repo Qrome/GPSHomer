@@ -4,6 +4,14 @@
 #include "Display.h"
 #include "LED.h"
 
+// --- Trail storage (actual definitions) ---
+#if ENABLE_TRAIL
+TrailPoint g_trail[TRAIL_MAX_POINTS];
+uint16_t g_trailIndex = 0;
+uint16_t g_trailCount = 0;
+#endif
+
+
 // Shared state between cores
 volatile bool  g_homeSet      = false;
 volatile float g_homeLatDeg   = 0.0f;
@@ -25,8 +33,6 @@ static float fs_lastLat = 0;
 static float fs_lastLon = 0;
 static bool  fs_first   = true;
 
-
-
 GPS gps;
 Display display;
 StatusLED led;
@@ -42,6 +48,10 @@ void resetFlightSummary() {
     g_totalDistance = 0;
     g_avgSpeed = 0;
     g_flightStartMs = millis();
+#if ENABLE_TRAIL
+    g_trailCount = 0;
+    g_trailIndex = 0;
+#endif
 }
 
 unsigned long readRcPwm() {
@@ -211,6 +221,23 @@ void updateFlightSummary(float latDeg, float lonDeg, float speedMs) {
     if (elapsed > 0) {
         g_avgSpeed = g_totalDistance / (elapsed * 0.001f);
     }
+
+#if ENABLE_TRAIL
+    static uint32_t lastTrailMs = 0;
+    uint32_t now = millis();
+
+    // Add one point per second
+    if (now - lastTrailMs >= 1000) {
+        lastTrailMs = now;
+
+        g_trail[g_trailIndex].lat = latDeg;
+        g_trail[g_trailIndex].lon = lonDeg;
+
+        g_trailIndex = (g_trailIndex + 1) % TRAIL_MAX_POINTS;
+        if (g_trailCount < TRAIL_MAX_POINTS) g_trailCount++;
+    }
+#endif
+
 }
 
 

@@ -1,4 +1,5 @@
 #include "Display.h"
+#include "config.h"
 #include <math.h>
 
 #ifndef DEG_TO_RAD
@@ -203,6 +204,10 @@ void Display::drawHomeMarker(
     }
 
     drawDistanceRings(clampDist, headingDeg);
+
+#if ENABLE_TRAIL
+    drawTrail(homeLatDeg, homeLonDeg, headingDeg, clampDist);
+#endif
 
     if (!homeSet) {
         return;
@@ -543,6 +548,58 @@ void Display::showSummary(float maxDist, float maxSpeed, float totalDist, float 
     _tft.print("Time:");
     _tft.setTextColor(valueColor, TFT_BLACK);
     _tft.print(timeBuf);
+}
+
+
+void Display::drawTrail(float homeLat, float homeLon, float headingDeg, float clampDist) {
+
+#if ENABLE_TRAIL == 0
+    return;
+#else
+
+    if (g_trailCount < 2) return;
+
+    int prevX = 0, prevY = 0;
+    bool havePrev = false;
+
+    for (int i = 0; i < g_trailCount; i++) {
+
+        float lat = g_trail[i].lat;
+        float lon = g_trail[i].lon;
+
+        // Convert to meters relative to home
+        float dLat = (lat - homeLat) * 110540.0f;
+        float dLon = (lon - homeLon) * 111320.0f * cosf(lat * DEG_TO_RAD);
+
+        // Rotate around aircraft heading
+        float psi = headingDeg * DEG_TO_RAD;
+        float xr = dLon * cosf(psi) - (-dLat) * sinf(psi);
+        float yr = dLon * sinf(psi) + (-dLat) * cosf(psi);
+
+        // Cull points outside clamp distance
+        float dist = sqrtf(xr*xr + yr*yr);
+        if (dist > clampDist) {
+            havePrev = false;
+            continue;
+        }
+
+        // Scale to pixels using same logic as home marker
+        float edge = SCREEN_RADIUS - 4;
+        float scale = edge / clampDist;
+
+        int sx = SCREEN_CENTER_X + xr * scale;
+        int sy = SCREEN_CENTER_Y - yr * scale;
+
+        // Draw line segment
+        if (havePrev) {
+            _tft.drawLine(prevX, prevY, sx, sy, TFT_DARKGREY);
+        }
+
+        prevX = sx;
+        prevY = sy;
+        havePrev = true;
+    }
+#endif
 }
 
 

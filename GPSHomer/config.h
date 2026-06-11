@@ -13,6 +13,24 @@
 #define RC_DOUBLE_TAP_WINDOW_MS 1000   // 1 second
 #define RC_SUMMARY_HOLD_MS        600    // hold high to show summary
 
+// Enable/disable breadcrumb trail on radar
+#define ENABLE_TRAIL 0      // 1 = on, 0 = off
+#define TRAIL_MAX_POINTS 300  // Max number of trail points
+
+#if ENABLE_TRAIL
+struct TrailPoint {
+    float lat;
+    float lon;
+};
+
+extern TrailPoint g_trail[TRAIL_MAX_POINTS];
+extern uint16_t g_trailIndex;
+extern uint16_t g_trailCount;
+#endif
+
+
+
+
 // -----------------------------
 // Hardware Pins
 // -----------------------------
