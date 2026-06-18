@@ -21,13 +21,17 @@ The display shows:
 
 - Aircraft symbol (centered)
 - Home direction marker (white circle with black “H”)
-- **Distance from home printed next to the H marker**
+- **Distance from home printed next to the H markerat the top**
+- (H) symbol represents home in relation to the aircraft
 - Ground speed
 - Satellite count
 - Heading‑up radar rotation
+- North indicating arrow on outer ring
 - **Smooth dynamic zoom based on distance**
 - **Optional distance rings (configurable)**
 - Distance clamping (auto‑scaled)
+- Quick double-tap to reset Home
+- Single-tap to display Flight Summary
 
 On boot, the system autodetects the GPS baud rate and displays it briefly.
 
@@ -57,6 +61,14 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 
 ## Wiring
 
+### RC RX Channel → RP2040 Zero
+
+| PWM Pin | RP2040 Pin | Description              |
+|---------|------------|--------------------------|
+| Signal  | GP27       | RC RX Ch6 → RP2040 (27)  |
+| RX      | 5V         | 5V RX → RP2040 (5V)      |
+| GND     | GND        | Ground                   |
+
 ### RP2040 Zero → GC9A01 Display
 
 | Display Pin | RP2040 Pin | Description   |
@@ -82,25 +94,6 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 
 ## TFT_eSPI Configuration (config.h)
 
-```cpp
-#define USER_SETUP_LOADED
-#define GC9A01_DRIVER
-
-#define PIN_LCD_CS      4
-#define PIN_LCD_DC      5
-#define PIN_LCD_RST     6
-#define PIN_LCD_SCK     2
-#define PIN_LCD_MOSI    3
-#define TOUCH_CS        -1
-
-#define TFT_BL   -1
-#define TOUCH_CS -1
-
-#define SPI_FREQUENCY       60000000
-#define SPI_READ_FREQUENCY  20000000
-#define SPI_TOUCH_FREQUENCY 2500000
-```
-
 ---
 
 ## Software Architecture
@@ -124,8 +117,8 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 - Clears and redraws radar  
 - Draws aircraft symbol  
 - Draws home marker  
-- **Draws distance next to home marker**
-- Shows speed + satellite count  
+- **Draws distance from home at the top of display**
+- Shows ground speed + satellite count  
 - Heading‑up rotation  
 - **Smooth dynamic zoom**
 - **Optional distance rings**

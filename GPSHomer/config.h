@@ -28,23 +28,11 @@ extern uint16_t g_trailIndex;
 extern uint16_t g_trailCount;
 #endif
 
-
-
-
 // -----------------------------
 // Hardware Pins
 // -----------------------------
 #define PIN_GPS_TX      0   // UART0 TX
 #define PIN_GPS_RX      1   // UART0 RX
-
-/* These are moved to "libs/TFT_eSPI/User_Setup.h" */
-//#define PIN_LCD_CS      4
-//#define PIN_LCD_DC      5
-//#define PIN_LCD_RST     6
-//#define PIN_LCD_SCK     2    //SCL
-//#define PIN_LCD_MOSI    3    //SDA
-//#define TOUCH_CS        -1   // <— disables warning
-//#define TFT_BL   -1
 
 // -----------------------------
 // GPS Settings
