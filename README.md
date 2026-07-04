@@ -39,19 +39,23 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 
 ## Hardware
 
-### Waveshare RP2040 Zero
+### GPSHomer Printed Circuit Board (PCB) by Qrome: [Link Soon]
+- Powered from 5V PWM Connection to RC Rx  
+- Display Plug and Play    
+
+### Waveshare RP2040 Zero: https://amzn.to/4v0oCKq
 - Dual‑core RP2040  
 - 3.3V logic  
 - SPI + UART support  
 
-### 1.28" Round GC9A01 TFT Display
+### 1.28" Round GC9A01 TFT 240x240 LCD Display: https://amzn.to/4wknjqQ
 - 240×240 resolution  
 - 4‑wire SPI  
 - GC9A01 driver  
 - Pins: VCC, GND, SCL, SDA, DC, CS, RST  
 - No BL pin (backlight always on)
 
-### GPS Module
+### GPS Module: https://amzn.to/4weRRKt
 - Any NMEA‑compatible GPS module  
 - Baud: 9600 / 38400 / 57600 / 115200  
 - Outputs GGA + RMC  
