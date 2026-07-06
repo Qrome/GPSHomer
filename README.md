@@ -199,7 +199,7 @@ Rendered in a subtle dark lime‑green for low distraction.
 Enable/disable in `config.h`:
 
 ```cpp
-#define OSD_SHOW_RINGS 1   // 1 = show rings, 0 = hide rings
+#define OSD_UNITS        UNITS_IMPERIAL  // UNITS_METRIC or UNITS_IMPERIAL
 ```
 
 ### ✔ Distance Display Next to Home Marker  
