@@ -1,37 +1,5 @@
 #pragma once
 
-// ===== Active Definitions Extracted from User_Setup =====
-#define USER_SETUP_LOADED
-
-// --- Driver & Display ---
-#define USER_SETUP_INFO "User_Setup"
-#define GC9A01_DRIVER
-#define TFT_WIDTH  240
-#define TFT_HEIGHT 240
-#define TFT_RGB_ORDER TFT_BGR
-#define SMOOTH_FONT
-#define RP2040_PIO_SPI
-
-// --- Pins (RP2040 Zero – Qrome) ---
-#define TFT_MOSI 3
-#define TFT_SCLK 2
-#define TFT_CS   4
-#define TFT_DC   5
-#define TFT_RST  6
-#define TFT_BL   -1
-
-// --- Fonts ---
-#define LOAD_GLCD
-#define LOAD_FONT2
-#define LOAD_FONT4
-#define LOAD_FONT6
-#define LOAD_FONT7
-#define LOAD_FONT8
-#define LOAD_GFXFF
-
-// --- SPI Frequency ---
-#define SPI_FREQUENCY 60000000
-
 #include <TFT_eSPI.h>
 #include <Arduino.h>
 #include "config.h"
