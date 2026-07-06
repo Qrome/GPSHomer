@@ -24,7 +24,7 @@ The display shows:
 
 - Aircraft symbol (centered)
 - Home direction marker (white circle with black “H”)
-- **Distance from home printed next to the H markerat the top**
+- **Distance from home printed next to the H marker at the top**
 - (H) symbol represents home in relation to the aircraft
 - Ground speed
 - Satellite count

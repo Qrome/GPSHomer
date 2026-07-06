@@ -301,7 +301,7 @@ void setup1() {
     // Start GPS UART
     gps.begin(Serial1);
 
-    delay(1500); // wait for GPS to sink up
+    delay(1500); // wait for GPS to sync up
 
     // Baud autodetection
     g_detectedBaud = 0;
