@@ -36,13 +36,8 @@ The display shows:
 - Single-tap to display Flight Summary
 - Summary View of Flight  
 
-<iframe width="560" height="315"
-        src="https://www.youtube.com/embed/dhLf5rBQKtM"
-        title="YouTube video"
-        frameborder="0"
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-        allowfullscreen>
-</iframe>
+[![GPS Homer Instrument Panel - Working Radar Style Display](https://img.youtube.com/vi/dhLf5rBQKtM/0.jpg)](https://www.youtube.com/watch?v=dhLf5rBQKtM)
+
 
 ---
 
