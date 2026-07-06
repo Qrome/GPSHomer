@@ -6,7 +6,7 @@
 #define UNITS_METRIC     0
 #define UNITS_IMPERIAL   1
 
-#define OSD_UNITS        UNITS_IMPERIAL
+#define OSD_UNITS        UNITS_IMPERIAL  // UNITS_METRIC or UNITS_IMPERIAL
 
 #define RC_PWM_PIN 27
 #define RC_THRESHOLD 1700
@@ -37,8 +37,8 @@ extern uint16_t g_trailCount;
 // -----------------------------
 // GPS Settings
 // -----------------------------
-#define GPS_DEFAULT_BAUD   9600
-const uint32_t baudList[] = {9600, 38400, 57600, 115200};
+#define GPS_DEFAULT_BAUD   115200
+const uint32_t baudList[] = {115200, 9600, 38400, 57600};
 
 // -----------------------------
 // Display Settings

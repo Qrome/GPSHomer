@@ -1,7 +1,7 @@
 #include <Arduino.h>
-#include "Display.h"
 #include "config.h"
 #include "GPS.h"
+#include "Display.h"
 #include "LED.h"
 
 // --- Trail storage (actual definitions) ---
@@ -249,8 +249,10 @@ void setup() {
     led.blue();   // Boot color
 
     pinMode(RC_PWM_PIN, INPUT);
+
     display.begin();
 
+    // Show boot baud (will be updated once setup1 detects real baud)
     display.showBootBaud(g_detectedBaud);
     delay(BOOT_BAUD_DISPLAY_MS);
     display.drawBackground();
@@ -323,16 +325,16 @@ void setup1() {
 // Core 1 on RP2040 (Arduino core supports loop1)
 void loop1() {
     static uint32_t lastSerial = 0;
-    const uint32_t SERIAL_INTERVAL_MS = 2000;
 
-    // ALWAYS read GPS — no throttling
-    gps.update();
+    const uint32_t SERIAL_INTERVAL_MS = 2000;
 
     uint32_t now = millis();
 
+    gps.update();
+
     // Track GPS communication health
     if (gps.isHealthy()) {
-        g_lastGpsDataMs = now;
+        g_lastGpsDataMs = now;  // GPS is talking to us
 
         int32_t lat1e7 = gps.getLatitude();
         int32_t lon1e7 = gps.getLongitude();
@@ -340,25 +342,34 @@ void loop1() {
         float latDeg = lat1e7 * 1e-7f;
         float lonDeg = lon1e7 * 1e-7f;
 
-        float speedMs = gps.getGroundSpeed() * 0.01f;
-        float headingDeg = gps.getCourse() * 0.1f;
+        float speedMs = gps.getGroundSpeed() * 0.01f; // cm/s → m/s
+        float headingDeg = gps.getCourse() * 0.1f;    // deg*10 → deg
         uint8_t sats = gps.getSatCount();
 
-        // AUTO‑SET HOME
+        // AUTO‑SET HOME ON FIRST VALID FIX
         if (!g_homeSet && gps.hasFix() && sats >= 6) {
-            if (latDeg != 0.0f && lonDeg != 0.0f &&
-                isfinite(latDeg) && isfinite(lonDeg) &&
-                fabs(latDeg) <= 90.0f && fabs(lonDeg) <= 180.0f)
+
+            int32_t lat1e7 = gps.getLatitude();
+            int32_t lon1e7 = gps.getLongitude();
+
+            float lat = lat1e7 * 1e-7f;
+            float lon = lon1e7 * 1e-7f;
+
+            // Validate coordinates
+            if (lat != 0.0f && lon != 0.0f &&
+                isfinite(lat) && isfinite(lon) &&
+                fabs(lat) <= 90.0f && fabs(lon) <= 180.0f)
             {
                 led.green();
-                g_homeLatDeg = latDeg;
-                g_homeLonDeg = lonDeg;
+                g_homeLatDeg = lat;
+                g_homeLonDeg = lon;
                 g_homeSet = true;
 
                 resetFlightSummary();
                 fs_first = true;
             }
         }
+
 
         g_curLatDeg  = latDeg;
         g_curLonDeg  = lonDeg;
@@ -369,13 +380,12 @@ void loop1() {
         updateFlightSummary(latDeg, lonDeg, speedMs);
     }
 
-    // GPS timeout
-    if (now - g_lastGpsDataMs > 2000 && now - g_lastGpsDataMs < 4000) {
+    // GPS communication timeout → LED amber
+    if (now - g_lastGpsDataMs > 2000) {
         led.amber();
-        Serial.println("Failed to communicate with GPS...");
     }
 
-    // Serial debug every 2 seconds
+    // Serial monitoring every 1 second
     if (now - lastSerial >= SERIAL_INTERVAL_MS) {
         lastSerial = now;
 
@@ -394,8 +404,8 @@ void loop1() {
         Serial.print(" | Lon: ");
         Serial.println(g_curLonDeg, 7);
     }
-}
 
+}
 
 
 
