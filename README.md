@@ -10,6 +10,8 @@
 
 # GPSHomer — RP2040 GPS Home Radar Display
 
+![GPSHomer - Ground Radar for tracking home](images/GPSHomer_01.png)
+
 ## Overview
 GPSHomer is a GPS‑based “Home Direction Radar” built around:
 
@@ -32,12 +34,21 @@ The display shows:
 - Distance clamping (auto‑scaled)
 - Quick double-tap to reset Home
 - Single-tap to display Flight Summary
+- Summary View of Flight  
 
-On boot, the system autodetects the GPS baud rate and displays it briefly.
+<iframe width="560" height="315"
+        src="https://www.youtube.com/embed/dhLf5rBQKtM"
+        title="YouTube video"
+        frameborder="0"
+        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+        allowfullscreen>
+</iframe>
 
 ---
 
 ## Hardware
+
+![Qrome's GPSHomer Printed Circuit Board)](images/GPSHomer_PCB.png)
 
 ### GPSHomer Printed Circuit Board (PCB) by Qrome: [Link Soon]
 - Powered from 5V PWM Connection to RC Rx  
@@ -61,6 +72,7 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 - Outputs GGA + RMC  
 - Provides lat/lon, speed, course, fix type, satellite count  
 
+![HGLRC M100 GPS Module](images/M100_GPS_Rx.png)
 ---
 
 ## Wiring
@@ -85,13 +97,13 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 | CS          | GP4        | Chip Select   |
 | RST         | GP6        | Reset         |
 
-### RP2040 Zero → GPS Module
+### RP2040 Zero → GPS Module (4 wire)
 
 | GPS Pin | RP2040 Pin | Description              |
 |---------|------------|--------------------------|
 | TX      | GP1        | GPS → RP2040 (RX)        |
 | RX      | GP0        | RP2040 → GPS (TX)        |
-| VCC     | 3.3V/5V    | Power                    |
+| VCC     | 3.3V       | Power                    |
 | GND     | GND        | Ground                   |
 
 ---
@@ -160,6 +172,7 @@ copy it to your TFT_eSPI lbirary path -- details in comments:
 - Heading‑up rotation  
 - **Smooth dynamic zoom**
 - **Optional distance rings**
+- Flight Summary
 
 ---
 
@@ -244,6 +257,8 @@ Supports 2D/3D fix and RMC validity for more stable home‑set behavior.
 ## Behavior Notes
 
 - Home position is captured on first valid fix  
+- Home position is reset by double tapping RC PWM signal low to high  
+- Summary view is triggered with RC RX signal set to high  
 - GPS baud autodetected at startup  
 - Satellite count and ground speed shown on OSD  
 - **Radar zooms smoothly based on distance**  
@@ -251,6 +266,7 @@ Supports 2D/3D fix and RMC validity for more stable home‑set behavior.
 - **Distance printed next to home marker**  
 - Home marker always drawn on top  
 
+![Summary View with RC RX PWM switch to high](images/GPSHomer_Summary.jpg)
 ---
 
 ## License
