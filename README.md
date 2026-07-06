@@ -10,7 +10,8 @@
 
 # GPSHomer — RP2040 GPS Home Radar Display
 
-![GPSHomer - Ground Radar for tracking home](images/GPSHomer_01.png)
+![GPSHomer - Ground Radar for tracking home](images/GPSHomer_01.png) 
+![GPSHomer - Ground Radar for tracking home](images/GPSHomer_02.png)
 
 ## Overview
 GPSHomer is a GPS‑based “Home Direction Radar” built around:
