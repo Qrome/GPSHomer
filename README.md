@@ -55,9 +55,9 @@ The display shows:
 - 3.3V logic  
 - SPI + UART support  
 
-### 1.28" Round GC9A01 TFT 240x240 LCD Display: https://amzn.to/4wknjqQ
+### 1.28" Round GC9A01 TFT 240x240 LCD Display: https://amzn.to/4fnbzhy
 - 240×240 resolution  
-- 4‑wire SPI  
+- 7‑wire SPI  
 - GC9A01 driver  
 - Pins: VCC, GND, SCL, SDA, DC, CS, RST  
 - No BL pin (backlight always on)
