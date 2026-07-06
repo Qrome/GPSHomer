@@ -144,12 +144,12 @@ copy it to your TFT_eSPI lbirary path -- details in comments:
 
 ## Software Architecture
 
-### Core 0
+### RP2040 Core 0
 - Display rendering  
 - Radar drawing  
 - UI elements  
 
-### Core 1
+### RP2040 Core 1
 - GPS UART reading  
 - NMEA parsing  
 - Updating shared navigation state  
@@ -180,9 +180,9 @@ copy it to your TFT_eSPI lbirary path -- details in comments:
 - Compute distance  
 - **Apply smooth dynamic zoom (logarithmic scaling)**  
 - Clamp distance to radar radius  
-- **Draw distance rings (optional)**  
+- **Draw distance rings**  
 - Draw home marker last  
-- **Print distance next to the H marker (above or below depending on position)**  
+- **Print distance from home near the top**  
 
 ---
 
@@ -217,17 +217,7 @@ Supports 2D/3D fix and RMC validity for more stable home‑set behavior.
 ## Configuration (config.h)
 
 ```cpp
-#define RADAR_CLAMP_DISTANCE_M   1000
-#define HOME_MARKER_RADIUS       8
-
-#define UNITS_METRIC     0
-#define UNITS_IMPERIAL   1
-#define OSD_UNITS        UNITS_METRIC
-
-#define OSD_SHOW_RINGS   1   // <— NEW
-
-#define BOOT_BAUD_DISPLAY_MS   2500
-#define RADAR_DRAW_FPS         20
+#define OSD_UNITS        UNITS_IMPERIAL  // UNITS_METRIC or UNITS_IMPERIAL
 ```
 
 ---
