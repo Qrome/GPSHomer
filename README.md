@@ -186,34 +186,6 @@ copy it to your TFT_eSPI lbirary path -- details in comments:
 
 ---
 
-## New Features
-
-### ✔ Smooth Dynamic Zoom  
-The radar automatically zooms in/out based on distance using a logarithmic interpolation curve.  
-This prevents snapping and keeps the home marker meaningful at all ranges.
-
-### ✔ Distance Rings (Configurable)  
-Three rings at 25%, 50%, and 100% of the current zoom scale.  
-Rendered in a subtle dark lime‑green for low distraction.
-
-Enable/disable in `config.h`:
-
-```cpp
-#define OSD_UNITS        UNITS_IMPERIAL  // UNITS_METRIC or UNITS_IMPERIAL
-```
-
-### ✔ Distance Display Next to Home Marker  
-Distance is shown directly next to the “H” marker:
-
-- If H is above center → distance printed below  
-- If H is below center → distance printed above  
-- Units follow `OSD_UNITS` (metric or imperial)
-
-### ✔ Improved Fix Logic (Optional)  
-Supports 2D/3D fix and RMC validity for more stable home‑set behavior.
-
----
-
 ## Configuration (config.h)
 
 ```cpp
