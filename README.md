@@ -96,8 +96,42 @@ On boot, the system autodetects the GPS baud rate and displays it briefly.
 
 ---
 
-## TFT_eSPI Configuration (config.h)
+## TFT_eSPI Configuration (User_Setup.h)
 
+Important details on the TFT_eSPI library and User_Setup.h -- this file 
+is located next to this README.md in the the GPSHomer project.   Please 
+copy it to your TFT_eSPI lbirary path -- details in comments:
+```
+// ============================================================================
+//  GPSHomer - Custom TFT_eSPI User Setup (User_Setup.h)
+// ============================================================================
+//
+//  IMPORTANT:
+//  This file is a *project-local override* of the standard TFT_eSPI
+//  configuration. It REPLACES the default User_Setup.h found in:
+//
+//      Documents/Arduino/libraries/TFT_eSPI/User_Setup.h
+//
+//  Why this file exists:
+//  ----------------------
+//  GPSHomer uses a GC9A01 round display and the RP2040 Zero's PIO-driven SPI.
+//  The stock TFT_eSPI configuration does NOT support this hardware layout.
+//  Therefore, this project provides its own User_Setup.h with the correct
+//  driver, pins, and SPI mode.
+//
+//  Where to place this file:
+//  -------------------------
+//  Replace the global file:
+//
+//      Documents/Arduino/libraries/TFT_eSPI/User_Setup.h
+//
+//  Summary:
+//  --------
+//  * This file *must* override the default TFT_eSPI configuration.
+//  * It ensures GPSHomer uses the correct GC9A01 driver + RP2040 PIO SPI.
+//  * It must replace the global one.
+//  * No other changes are needed once this file is in place.
+```
 ---
 
 ## Software Architecture
