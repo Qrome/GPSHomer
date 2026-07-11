@@ -39,7 +39,32 @@ The display shows:
 
 [![GPS Homer Instrument Panel - Working Radar Style Display](https://img.youtube.com/vi/dhLf5rBQKtM/0.jpg)](https://www.youtube.com/watch?v=dhLf5rBQKtM)
 
+---
+## Software & Environment Setup
 
+This project is built for the Raspberry Pi Pico / RP2040 / RP2350 architecture using the Arduino IDE. Follow the steps below to configure your development environment.
+
+### 1. Install the Board Support Package (BSP)
+You must use the Arduino Pico core maintained by Earle F. Philhower, III. The default Arduino core will not support all features or pin mappings.
+
+1. Open the Arduino IDE.
+2. Navigate to **File** -> **Preferences**.
+3. Locate the **Additional Boards Manager URLs** field and paste the following URL:
+   ```text
+   https://github.com/earlephilhower/arduino-pico/releases/download/global/package_rp2040_index.json
+   ```
+4. Click **OK**.
+5. Go to **Tools** -> **Board** -> **Boards Manager...**
+6. Search for `Pico` or `Philhower` and install **Raspberry Pi Pico/RP2040/RP2350** by *Earle F. Philhower, III*.
+7. Once installed, go to **Tools** -> **Board** -> **Raspberry Pi Pico/RP2040** and select **Waveshare RP2040 Zero**.
+
+### 2. Install Required Libraries
+Open the Arduino Library Manager (**Tools** -> **Manage Libraries...** or press `Ctrl+Shift+I` / `Cmd+Shift+I`) to search for and install:
+
+* **Adafruit NeoPixel** (by Adafruit)
+* **TFT_eSPI** (by Bodmer)
+
+> 💡 **Note:** When installing the libraries, if the IDE prompts you to install missing dependencies (such as `Adafruit BusIO`), choose **Install All**.
 ---
 
 ## Hardware
