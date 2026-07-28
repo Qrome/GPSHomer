@@ -10,6 +10,8 @@
 
 # GPSHomer — RP2040 GPS Home Radar Display
 
+GPSHomer PCB Short kit:  https://www.etsy.com/listing/4545280203/gpshomer-short-kit-pcb-for-rp2040-zero
+
 ![GPSHomer - Ground Radar for tracking home](images/GPSHomer_01.png) 
 ![GPSHomer - Ground Radar for tracking home](images/GPSHomer_02.png)
 
@@ -71,7 +73,7 @@ Open the Arduino Library Manager (**Tools** -> **Manage Libraries...** or press 
 
 ![Qrome's GPSHomer Printed Circuit Board)](images/GPSHomer_PCB.png)
 
-### GPSHomer Printed Circuit Board (PCB) by Qrome: [Link Soon]
+### [GPSHomer Printed Circuit Board](https://www.etsy.com/listing/4545280203/) (PCB) by Qrome: https://www.etsy.com/listing/4545280203/
 - Powered from 5V PWM Connection to RC Rx  
 - Display Plug and Play    
 
