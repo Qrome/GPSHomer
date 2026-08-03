@@ -10,9 +10,14 @@
 
 # GPSHomer — RP2040 GPS Home Radar Display
 
-GPSHomer PCB Short kit:  https://www.etsy.com/listing/4545280203/gpshomer-short-kit-pcb-for-rp2040-zero
+### Hardware Quick List
 
-![GPSHomer - Ground Radar for tracking home](images/GPSHomer_01.png) 
+- [GPSHomer Printed Circuit Board](https://www.etsy.com/listing/4545280203/) (PCB) by Qrome: https://www.etsy.com/listing/4545280203/
+- Waveshare RP2040 Zero: https://amzn.to/4v0oCKq
+- 1.28" Round GC9A01 TFT 240x240 LCD Display: https://amzn.to/4fnbzhy
+- GPS Module: https://amzn.to/4weRRKt  
+
+![GPSHomer - Ground Radar for tracking home](images/GPSHomer_04.png) 
 ![GPSHomer - Ground Radar for tracking home](images/GPSHomer_02.png)
 
 ## Overview
@@ -39,7 +44,7 @@ The display shows:
 - Single-tap to display Flight Summary
 - Summary View of Flight  
 
-[![GPS Homer Instrument Panel - Working Radar Style Display](https://img.youtube.com/vi/dhLf5rBQKtM/0.jpg)](https://www.youtube.com/watch?v=dhLf5rBQKtM)
+[![Home Tracking Radar Display You Can Build - GPSHomer Detailed Build](https://img.youtube.com/vi/4pOJ_49xJ2c/0.jpg)](https://www.youtube.com/watch?v=4pOJ_49xJ2c)
 
 ---
 ## Software & Environment Setup
@@ -71,7 +76,7 @@ Open the Arduino Library Manager (**Tools** -> **Manage Libraries...** or press 
 
 ## Hardware
 
-![Qrome's GPSHomer Printed Circuit Board)](images/GPSHomer_PCB.png)
+![Qrome's GPSHomer Printed Circuit Board)](images/GPSHomer_01a.png)
 
 ### [GPSHomer Printed Circuit Board](https://www.etsy.com/listing/4545280203/) (PCB) by Qrome: https://www.etsy.com/listing/4545280203/
 - Powered from 5V PWM Connection to RC Rx  
@@ -253,6 +258,8 @@ copy it to your TFT_eSPI lbirary path -- details in comments:
 
 ![Summary View with RC RX PWM switch to high](images/GPSHomer_Summary.jpg)
 ---
+
+[![GPS Homer Instrument Panel - Working Radar Style Display](https://img.youtube.com/vi/dhLf5rBQKtM/0.jpg)](https://www.youtube.com/watch?v=dhLf5rBQKtM)
 
 ## License
 
